@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>حالة النظام - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .status-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .status-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+    .status-online { background: #dcfce7; color: #166534; }
+    .status-offline { background: #fee2e2; color: #991b1b; }
+    .status-info h3 { margin: 0; font-size: 20px; color: var(--primary); }
+    .status-info p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 14px; }
+  </style>
+</head>
+<body class="app-body" id="bodyRoot">
+
+  <div class="sidebar">
+    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار الخليج</div>
+    <a href="dashboard.html"><i class="ph ph-squares-four"></i> لوحة القيادة</a>
+    <a href="projects.html"><i class="ph ph-folder-open"></i> مجلد المشاريع</a>
+    <a href="fill_info.html"><i class="ph ph-users"></i> الفريق والإعدادات</a>
+    <a href="tasks.html"><i class="ph ph-list-dashes"></i> إنشاء مهمة</a>
+    <a href="report.html"><i class="ph ph-presentation"></i> تقارير المشاريع</a>
+    <a href="system_status.html" class="active"><i class="ph ph-pulse"></i> حالة النظام</a>
+    <a href="settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
+    <a href="#" onclick="handleLogout(event)" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
+  </div>
+
+  <div class="main-content">
+    <h1>حالة النظام (System Status)</h1>
+    <p class="subtitle">مراقبة أداء قاعدة البيانات والتطبيق في الوقت الفعلي.</p>
+
+    <div class="grid-2">
+      <!-- Firebase Connection -->
+      <div class="status-card" id="dbStatusCard">
+        <div class="status-icon status-offline" id="dbIcon"><i class="ph ph-wifi-slash"></i></div>
+        <div class="status-info">
+          <h3>اتصال قاعدة البيانات</h3>
+          <p id="dbStatusText">جاري الفحص...</p>
+        </div>
+      </div>
+
+      <!-- Total Engineers -->
+      <div class="status-card">
+        <div class="status-icon" style="background: #e0f2fe; color: #0284c7;"><i class="ph ph-users"></i></div>
+        <div class="status-info">
+          <h3>إجمالي المهندسين</h3>
+          <p id="engineerCount">جاري التحميل...</p>
+        </div>
+      </div>
+
+      <!-- Total Tasks -->
+      <div class="status-card">
+        <div class="status-icon" style="background: #fef3c7; color: #b45309;"><i class="ph ph-list-checks"></i></div>
+        <div class="status-info">
+          <h3>إجمالي المهام</h3>
+          <p id="taskCount">جاري التحميل...</p>
+        </div>
+      </div>
+
+      <!-- App Version -->
+      <div class="status-card">
+        <div class="status-icon" style="background: #f3e8ff; color: #7e22ce;"><i class="ph ph-info"></i></div>
+        <div class="status-info">
+          <h3>إصدار التطبيق</h3>
+          <p>v1.2 (Stable Build)</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card" style="margin-top: 20px;">
+        <p style="text-align: center; color: var(--text-muted); font-size: 14px;" id="lastChecked">آخر فحص: --</p>
+    </div>
+  </div>
+
+  <script src="sounds.js"></script>
+  <script src="settings.js"></script>
+  
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import Saves from './saves.js';
+    import { signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    window.handleLogout = async function(e) {
+      e.preventDefault();
+      await signOut(auth);
+      window.location.href = 'index.html';
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = 'index.html';
+        return;
+      }
+      checkSystemStatus();
+    });
+
+    async function checkSystemStatus() {
+        const dbIcon = document.getElementById('dbIcon');
+        const dbStatusText = document.getElementById('dbStatusText');
+        const lastChecked = document.getElementById('lastChecked');
+
+        try {
+            // Try fetching data to test the connection
+            const workers = await Saves.getWorkers();
+            const tasks = await Saves.getTasks();
+
+            // If successful, update UI to Online
+            dbIcon.className = 'status-icon status-online';
+            dbIcon.innerHTML = '<i class="ph ph-wifi-high"></i>';
+            dbStatusText.textContent = 'متصل (Online) - يعمل بكفاءة';
+            
+            // Update counts
+            document.getElementById('engineerCount').textContent = workers.length + ' مهندس';
+            document.getElementById('taskCount').textContent = tasks.length + ' مهمة';
+
+        } catch (error) {
+            // If failed, update UI to Offline
+            dbIcon.className = 'status-icon status-offline';
+            dbIcon.innerHTML = '<i class="ph ph-wifi-slash"></i>';
+            dbStatusText.textContent = 'غير متصل (Offline) - تحقق من الإنترنت';
+        }
+
+        // Update timestamp
+        const now = new Date();
+        lastChecked.textContent = `آخر فحص: ${now.toLocaleTimeString('ar-EG')}`;
+    }
+  </script>
+</body>
+</html>
