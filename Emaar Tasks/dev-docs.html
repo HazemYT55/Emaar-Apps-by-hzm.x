@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>توثيق المطورين - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <!-- Library to render Markdown inside the web page -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    .markdown-body { background: var(--surface); padding: 30px; border-radius: 12px; border: 1px solid var(--border); line-height: 1.8; }
+    .markdown-body h1, .markdown-body h2 { color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-top: 20px; }
+    .markdown-body code { background: var(--bg); padding: 2px 6px; border-radius: 4px; color: var(--danger); }
+    .markdown-body ul { padding-right: 20px; }
+  </style>
+</head>
+<body class="app-body" id="bodyRoot">
+
+  <div class="sidebar">
+    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار الخليج</div>
+    <a href="dashboard.html"><i class="ph ph-squares-four"></i> لوحة القيادة</a>
+    <a href="projects.html"><i class="ph ph-folder-open"></i> مجلد المشاريع</a>
+    <a href="fill_info.html"><i class="ph ph-users"></i> الفريق والإعدادات</a>
+    <a href="tasks.html"><i class="ph ph-list-dashes"></i> إنشاء مهمة</a>
+    <a href="report.html"><i class="ph ph-presentation"></i> تقارير المشاريع</a>
+    <a href="dev-docs.html" class="active"><i class="ph ph-code"></i> توثيق المطورين</a>
+    <a href="settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
+    <a href="#" onclick="handleLogout(event)" style="color: #ef4444;"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
+  </div>
+
+  <div class="main-content">
+    <h1>توثيق المطورين (Developer Docs)</h1>
+    <p class="subtitle">كل التفاصيل التقنية والـ Formats المستخدمة في بناء التطبيق.</p>
+
+    <!-- This container will be filled by JavaScript -->
+    <div id="docsContainer" class="markdown-body">
+      <p>جاري تحميل التوثيق...</p>
+    </div>
+  </div>
+
+  <script src="sounds.js"></script>
+  <script src="settings.js"></script>
+  
+  <script type="module">
+    import { auth } from './firebase-config.js';
+    import { signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    window.handleLogout = async function(e) {
+      e.preventDefault();
+      await signOut(auth);
+      window.location.href = 'index.html';
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) { window.location.href = 'index.html'; return; }
+      
+      // THE MARKDOWN CONTENT
+      const markdownText = `
+# 🛠️ Developer Documentation
+
+This is the official developer documentation for the Emaar Tasks application. It lives directly inside the web app, proving that the platform is capable of rendering complex technical formats.
+
+## 📦 Supported Formats (In the Wiki)
+The GitHub Wiki for this project demonstrates the use of multiple markup languages:
+*   **Markdown** (Standard)
+*   **AsciiDoc** (Tech Stack page)
+*   **reStructuredText** (FAQ page)
+*   **MediaWiki** (Changelog page)
+*   **Creole** (Deployment page)
+*   **Pod** (Perl Docs page)
+*   **Org-mode** (Org Mode page)
+*   **RDoc** (Ruby Docs page)
+*   **Textile** (Textile page)
+
+## 💻 Tech Stack
+*   **Frontend:** HTML5, CSS3, Vanilla JS
+*   **Backend:** Firebase Auth, Firestore
+*   **Libraries:** Phosphor Icons, PptxGenJS, SheetJS, jsPDF, marked.js
+
+## 🔒 Security & Rules
+\`\`\`javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+\`\`\`
+
+## 🚀 Deployment
+The app is currently deployed on:
+1.  Firebase Hosting (Main)
+2.  Cloudflare Workers
+3.  GitHub Pages
+      `;
+
+      // Render the Markdown into HTML
+      document.getElementById('docsContainer').innerHTML = marked.parse(markdownText);
+    });
+  </script>
+</body>
+</html>
