@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الإعدادات - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .theme-btn { 
+      width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: all 0.2s; display: inline-block; 
+    }
+    .theme-btn:hover { transform: scale(1.1); }
+    .theme-btn.active { border-color: var(--text-main); transform: scale(1.15); box-shadow: 0 0 10px rgba(0,0,0,0.2); }
+    
+    .font-btn {
+      background: var(--bg) !important;
+      color: var(--text-main) !important;
+      padding: 10px 20px;
+      border: 1px solid var(--border) !important;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .font-btn:hover { border-color: var(--primary) !important; }
+    .font-btn.active {
+      background: var(--primary) !important;
+      color: white !important;
+      border-color: var(--primary) !important;
+    }
+  </style>
+</head>
+<body class="app-body" id="bodyRoot">
+
+  <div class="sidebar">
+    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار</div>
+    <a href="dashboard.html"><i class="ph ph-squares-four"></i> لوحة القيادة</a> <!-- CHANGED TO dashboard.html -->
+    <a href="projects.html"><i class="ph ph-folder-open"></i> مجلد المشاريع</a>
+    <a href="fill_info.html"><i class="ph ph-users"></i> الفريق والإعدادات</a>
+    <a href="board.html" class="active"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
+    <a href="tasks.html"><i class="ph ph-list-dashes"></i> قائمة المهام</a>
+    <a href="report.html"><i class="ph ph-robot"></i> تقرير الذكاء الاصطناعي</a>
+    <a href="settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
+    <a href="#" onclick="handleLogout(event)" style="color: #ef4444;"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
+  </div>
+  
+  <div class="main-content">
+    <h1>الإعدادات</h1>
+    <p class="subtitle">تخصيص تجربة استخدام التطبيق وتحديث بياناتك.</p>
+
+    <div class="card">
+      
+      <!-- 1. User Profile (Name & Phone) -->
+      <div class="settings-option" style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border);">
+        <div>
+          <div class="settings-title" style="font-weight: bold; font-size: 18px; color: var(--primary);">بيانات المستخدم (User Profile)</div>
+          <div class="settings-desc" style="font-size: 14px; margin-top: 4px;">تحديث اسمك ورقم هاتفك.</div>
+        </div>
+        <div class="row" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <input type="text" id="userNameInput" placeholder="الاسم الكامل" style="padding: 10px; border: 1px solid var(--border); border-radius: 4px; width: 180px; color: var(--text-main); background: var(--bg);">
+          <input type="text" id="userPhoneInput" placeholder="رقم الهاتف" style="padding: 10px; border: 1px solid var(--border); border-radius: 4px; width: 150px; color: var(--text-main); background: var(--bg);">
+          <button onclick="saveProfile()" style="background: var(--primary); color: white; padding: 10px 16px; border: none; border-radius: 4px; cursor: pointer;">حفظ</button>
+        </div>
+      </div>
+
+      <!-- 2. Language -->
+      <div class="settings-option" style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border);">
+        <div>
+          <div class="settings-title" style="font-weight: bold; font-size: 18px; color: var(--primary);">لغة التطبيق (Language)</div>
+          <div class="settings-desc" style="font-size: 14px; margin-top: 4px;">اختر لغة واجهة المستخدم.</div>
+        </div>
+        <div class="row" style="display: flex; gap: 10px;">
+          <button onclick="setLanguage('ar')" id="btnLangAr" style="background: var(--primary); color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;">عربي</button>
+          <button onclick="setLanguage('en')" id="btnLangEn" style="background: var(--primary); color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;">English</button>
+        </div>
+      </div>
+
+      <!-- 3. Theme -->
+      <div class="settings-option" style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border);">
+        <div>
+          <div class="settings-title" style="font-weight: bold; font-size: 18px; color: var(--primary);">مظهر التطبيق (Theme)</div>
+          <div class="settings-desc" style="font-size: 14px; margin-top: 4px;">اختر الألوان المريحة لعينك.</div>
+        </div>
+        <div class="row" style="display: flex; gap: 15px;">
+          <div class="theme-btn" id="theme-blue" style="background: #0f4c81;" onclick="setTheme('theme-blue')" title="Emaar Blue"></div>
+          <div class="theme-btn" id="theme-dark" style="background: #1e293b;" onclick="setTheme('theme-dark')" title="Dark Mode"></div>
+          <div class="theme-btn" id="theme-gold" style="background: #fbbf24;" onclick="setTheme('theme-gold')" title="Desert Gold"></div>
+        </div>
+      </div>
+
+      <!-- 4. Font Size -->
+      <div class="settings-option" style="display: flex; justify-content: space-between; align-items: center; padding: 20px;">
+        <div>
+          <div class="settings-title" style="font-weight: bold; font-size: 18px; color: var(--primary);">حجم الخط (Font Size)</div>
+          <div class="settings-desc" style="font-size: 14px; margin-top: 4px;">تكبير أو تصغير النصوص.</div>
+        </div>
+        <div class="row" style="display: flex; gap: 10px;">
+          <button class="font-btn" id="font-small" onclick="setFontSize('14px')">صغير</button>
+          <button class="font-btn" id="font-normal" onclick="setFontSize('16px')">عادي</button>
+          <button class="font-btn" id="font-large" onclick="setFontSize('18px')">كبير</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="settings.js"></script>
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    let currentUid = null;
+
+    // Load User Data
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUid = user.uid;
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.name) document.getElementById('userNameInput').value = data.name;
+          if (data.phone) document.getElementById('userPhoneInput').value = data.phone;
+        }
+      }
+    });
+
+    // Save Profile
+    window.saveProfile = async function() {
+      if (!currentUid) return alert('يجب تسجيل الدخول أولاً.');
+      
+      const newName = document.getElementById('userNameInput').value.trim();
+      const newPhone = document.getElementById('userPhoneInput').value.trim();
+      
+      if (!newName) return alert('الرجاء إدخال الاسم.');
+      
+      try {
+        await setDoc(doc(db, "users", currentUid), {
+          name: newName,
+          phone: newPhone
+        }, { merge: true }); // merge: true means it keeps the email and role, just updates name and phone
+        
+        alert('تم حفظ بياناتك بنجاح!');
+      } catch (e) {
+        alert('حدث خطأ: ' + e.message);
+      }
+    };
+  </script>
+</body>
+</html>

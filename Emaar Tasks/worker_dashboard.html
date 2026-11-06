@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة المهندس - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="app-body" id="bodyRoot">
+
+  <div class="sidebar">
+    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار الخليج</div>
+    <a href="worker_dashboard.html" class="active"><i class="ph ph-check-square-offset"></i> مهامي</a>
+    <a href="worker_board.html"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
+    <a href="worker_profile.html"><i class="ph ph-user"></i> ملفي الشخصي</a>
+    <a href="worker_settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
+    <a href="#" onclick="handleLogout(event)" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
+  </div>
+
+  <div class="main-content">
+    <h1 id="greeting">مرحباً بك</h1>
+    <p class="subtitle">مهامك الهندسية المسندة.</p>
+
+    <div id="workerTasksContainer" class="grid-2">
+      <p style="text-align: center; color: var(--text-muted); width: 100%;">جاري تحميل المهام...</p>
+    </div>
+  </div>
+
+  <script src="sounds.js"></script>
+  <script src="settings.js"></script>
+  
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import Saves from './saves.js';
+    import { doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    window.handleLogout = async function(e) {
+      e.preventDefault();
+      await signOut(auth);
+      localStorage.clear();
+      window.location.href = 'index.html';
+    };
+
+    // --- THE BULLETPROOF FIX ---
+    async function forceLoadDashboard() {
+        try {
+            // Find the worker by name
+            const workers = await Saves.getWorkers();
+            let myWorker = workers.find(w => w.name.includes("حازم سلامة"));
+            
+            const MY_WORKER_ID = myWorker ? myWorker.id : "1K0uJJzRbpKjBJtDzWQm";
+            const MY_NAME = myWorker ? myWorker.name : "حازم سلامة";
+
+            document.getElementById('greeting').textContent = `مرحباً، ${MY_NAME}`;
+            const container = document.getElementById('workerTasksContainer');
+            
+            const allTasks = await Saves.getTasks();
+            
+            const myTasks = allTasks.filter(t => {
+                let isAssigned = false;
+                if (t.workerIds && Array.isArray(t.workerIds)) isAssigned = t.workerIds.includes(MY_WORKER_ID);
+                if (t.workerId === MY_WORKER_ID) isAssigned = true;
+                
+                return isAssigned && (t.status === 'pending' || t.status === 'in_progress');
+            });
+            
+            if (myTasks.length === 0) {
+                container.innerHTML = '<p style="text-align:center; padding: 40px; color: var(--text-muted); width: 100%;">لا توجد مهام قيد التنفيذ حالياً.</p>';
+                return;
+            }
+
+            container.innerHTML = myTasks.map(t => `
+                <div class="card" style="border-right: 4px solid var(--primary);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="color: var(--primary);">${t.title}</h3>
+                        <span class="badge ${t.status === 'pending' ? 'pending' : 'in-progress'}">
+                            ${t.status === 'pending' ? 'قيد الانتظار' : 'قيد التنفيذ'}
+                        </span>
+                    </div>
+                    ${t.description ? `<p style="font-size: 14px; color: var(--text-muted); margin-bottom: 15px;">${t.description}</p>` : ''}
+                    
+                    <div style="display: flex; gap: 15px; font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
+                        ${t.location ? `<span><i class="ph ph-map-pin"></i> ${t.location}</span>` : ''}
+                        ${t.dueDate ? `<span><i class="ph ph-calendar"></i> ${t.dueDate}</span>` : ''}
+                    </div>
+
+                    <div style="border-top: 1px solid var(--border); padding-top: 15px; display: flex; gap: 10px;">
+                        ${t.status === 'pending' ? `<button onclick="startTask('${t.id}')" style="background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;"><i class="ph ph-play"></i> بدء العمل</button>` : ''}
+                        ${t.status === 'in_progress' ? `<button onclick="finishTask('${t.id}')" style="background: var(--success); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;"><i class="ph ph-check"></i> تم الإنجاز وإرسال للمراجعة</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+        } catch (error) {
+            document.getElementById('workerTasksContainer').innerHTML = `<p style="color: red; width:100%;">خطأ: ${error.message}</p>`;
+        }
+    }
+
+    window.startTask = async function(taskId) {
+        if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+        await Saves.updateTask(taskId, { status: 'in_progress' });
+        forceLoadDashboard();
+    };
+
+    window.finishTask = async function(taskId) {
+        if(confirm('هل أنت متأكد من إنجاز هذه المهمة؟ سيتم إرسالها للمراجع.')) {
+            if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+            await Saves.updateTask(taskId, { status: 'review' });
+            forceLoadDashboard();
+        }
+    };
+
+    forceLoadDashboard();
+  </script>
+</body>
+</html>

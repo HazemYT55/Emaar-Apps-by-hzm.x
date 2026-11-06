@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة المهام - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="app-body" id="bodyRoot">
+
+  <div class="sidebar">
+    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار الخليج</div>
+    <a href="worker_dashboard.html"><i class="ph ph-check-square-offset"></i> مهامي</a>
+    <a href="worker_board.html" class="active"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
+    <a href="worker_profile.html"><i class="ph ph-user"></i> ملفي الشخصي</a>
+    <a href="worker_settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
+    <a href="#" onclick="handleLogout(event)" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
+  </div>
+
+  <div class="main-content">
+    <h1>لوحة مهامي</h1>
+    <p class="subtitle">اسحب وأفلت مهامك لتحديث حالتها.</p>
+
+    <div class="kanban-board">
+      <div class="kanban-column">
+        <div class="kanban-column-header"><span><i class="ph ph-hourglass"></i> قيد الانتظار</span><span id="count-pending">0</span></div>
+        <div id="col-pending" class="kanban-dropzone" ondrop="drop(event, 'pending')" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+      </div>
+      <div class="kanban-column">
+        <div class="kanban-column-header"><span><i class="ph ph-spinner"></i> قيد التنفيذ</span><span id="count-in_progress">0</span></div>
+        <div id="col-in_progress" class="kanban-dropzone" ondrop="drop(event, 'in_progress')" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+      </div>
+      <div class="kanban-column">
+        <div class="kanban-column-header"><span><i class="ph ph-eye"></i> بانتظار المراجعة</span><span id="count-review">0</span></div>
+        <div id="col-review" class="kanban-dropzone" ondrop="drop(event, 'review')" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+      </div>
+      <div class="kanban-column">
+        <div class="kanban-column-header"><span><i class="ph ph-check-circle"></i> تم الانتهاء</span><span id="count-done">0</span></div>
+        <div id="col-done" class="kanban-dropzone" ondrop="drop(event, 'done')" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="sounds.js"></script>
+  <script src="settings.js"></script>
+  
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import Saves from './saves.js';
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    let currentWorkerId = null;
+
+    window.handleLogout = async function(e) {
+      e.preventDefault();
+      await signOut(auth);
+      window.location.href = 'index.html';
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { window.location.href = 'index.html'; return; }
+
+      const docRef = doc(db, "users", user.uid);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        if (userData.workerId) {
+           currentWorkerId = userData.workerId;
+           loadBoard();
+        } else {
+           document.querySelector('.kanban-board').innerHTML = `
+              <div class="card" style="width: 100%; text-align: center; padding: 40px; border-right: 4px solid var(--danger);">
+                 <h2 style="color: var(--danger);">لم يتم ربط حسابك بملف عامل</h2>
+                 <p>يرجى مراجعة المدير.</p>
+              </div>
+           `;
+        }
+      }
+    });
+
+    async function loadBoard() {
+      const allTasks = await Saves.getTasks();
+      
+      const myTasks = allTasks.filter(t => {
+          if (!t) return false;
+          let isAssigned = false;
+          if (t.workerIds && Array.isArray(t.workerIds)) {
+               isAssigned = t.workerIds.includes(currentWorkerId);
+          }
+          if (t.workerId === currentWorkerId) isAssigned = true;
+          if (t.reviewerId === currentWorkerId) isAssigned = true;
+          return isAssigned;
+      });
+      
+      const columns = {
+        'pending': document.getElementById('col-pending'),
+        'in_progress': document.getElementById('col-in_progress'),
+        'review': document.getElementById('col-review'),
+        'done': document.getElementById('col-done')
+      };
+
+      Object.values(columns).forEach(col => col.innerHTML = '');
+      let counts = { pending: 0, in_progress: 0, review: 0, done: 0 };
+
+      myTasks.forEach(task => {
+        const col = columns[task.status] || columns['pending'];
+        counts[task.status] = (counts[task.status] || 0) + 1;
+
+        let circleColor = '#cbd5e1'; 
+        if (task.status === 'done') circleColor = '#10b981'; 
+        else if (task.status === 'in_progress' || task.status === 'review') circleColor = '#3b82f6'; 
+
+        const taskEl = document.createElement('div');
+        taskEl.className = 'kanban-task'; 
+        taskEl.draggable = true; 
+        taskEl.id = `task-${task.id}`;
+        taskEl.ondragstart = (e) => dragStart(e, task.id); 
+        taskEl.ondragend = (e) => e.target.classList.remove('dragging');
+
+        taskEl.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div class="kanban-task-title" style="flex:1;">${task.title || 'مهمة بدون عنوان'}</div>
+            <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${circleColor}; margin-right: 5px;"></div>
+          </div>
+          <div class="kanban-task-meta">
+            ${task.dueDate ? `<span><i class="ph ph-calendar"></i> ${task.dueDate}</span>` : ''}
+            ${task.location ? `<span><i class="ph ph-map-pin"></i> ${task.location}</span>` : ''}
+          </div>`;
+        col.appendChild(taskEl);
+      });
+
+      document.getElementById('count-pending').textContent = counts.pending;
+      document.getElementById('count-in_progress').textContent = counts.in_progress;
+      document.getElementById('count-review').textContent = counts.review;
+      document.getElementById('count-done').textContent = counts.done;
+    }
+
+    window.allowDrop = (ev) => ev.preventDefault();
+    window.dragEnter = (ev) => { ev.preventDefault(); if (ev.target.classList.contains('kanban-dropzone')) ev.target.classList.add('drag-over'); };
+    window.dragLeave = (ev) => { if (ev.target.classList.contains('kanban-dropzone')) ev.target.classList.remove('drag-over'); };
+    window.dragStart = (ev, taskId) => { ev.dataTransfer.setData("text/plain", taskId); ev.target.classList.add('dragging'); };
+    
+    window.drop = async (ev, newStatus) => {
+      ev.preventDefault();
+      document.querySelectorAll('.kanban-dropzone').forEach(z => z.classList.remove('drag-over'));
+      const taskId = ev.dataTransfer.getData("text/plain");
+      
+      if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+      await Saves.updateTask(taskId, { status: newStatus });
+      loadBoard();
+    };
+  </script>
+</body>
+</html>

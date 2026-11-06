@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>عرض الفريق - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Style for the preview page */
+    .preview-header { text-align: center; margin-bottom: 40px; }
+    .preview-header h1 { font-size: 36px; color: var(--primary); margin-bottom: 10px; }
+    .preview-header p { color: var(--text-muted); font-size: 16px; }
+    
+    .worker-card-preview {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+      transition: transform 0.2s;
+    }
+    
+    .worker-card-preview:hover {
+      transform: translateY(-5px);
+      border-color: var(--primary);
+    }
+
+    .worker-avatar {
+      width: 80px;
+      height: 80px;
+      background: var(--bg);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 40px;
+      color: var(--primary);
+      margin: 0 auto 15px auto;
+    }
+
+    .worker-card-preview h3 { margin: 0 0 5px 0; color: var(--primary); font-size: 20px; }
+    .worker-card-preview .role { color: var(--text-muted); font-size: 14px; margin-bottom: 15px; display: block; }
+    .worker-card-preview .phone { font-size: 14px; font-weight: bold; }
+  </style>
+</head>
+<body class="app-body" id="bodyRoot">
+
+  <div class="main-content" style="margin: 0 auto; max-width: 1000px; padding: 40px 20px;">
+    
+    <div class="preview-header">
+      <h1>فريق عمل إعمار</h1>
+      <p>دليل العمال والمهندسين العاملين في المشاريع</p>
+    </div>
+
+    <div id="previewWorkerList" class="grid-3">
+      <p style="text-align: center; color: var(--text-muted); grid-column: 1 / -1;">جاري تحميل الفريق من السيرفر...</p>
+    </div>
+
+  </div>
+
+  <script src="settings.js"></script>
+  
+  <script type="module">
+    import Saves from './saves.js';
+
+    async function loadPreview() {
+      const workers = await Saves.getWorkers();
+      const tasks = await Saves.getTasks();
+      const list = document.getElementById('previewWorkerList');
+
+      if (workers.length === 0) {
+        list.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 40px; grid-column: 1 / -1;">لا يوجد عمال مسجلين حالياً.</p>';
+        return;
+      }
+
+      list.innerHTML = workers.map(w => {
+        // Calculate how many tasks this worker has
+        const wTasks = tasks.filter(t => t.workerIds && t.workerIds.includes(w.id)).length;
+
+        return `
+          <div class="worker-card-preview">
+            <div class="worker-avatar"><i class="ph ph-user"></i></div>
+            <h3>${w.name}</h3>
+            <span class="role">${w.role || 'بدون مسمى وظيفي'}</span>
+            <div class="phone"><i class="ph ph-phone"></i> ${w.phone || 'لا يوجد رقم'}</div>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); font-size: 13px; color: var(--primary); font-weight: bold;">
+              <i class="ph ph-list-checks"></i> ${wTasks} مهام مسندة
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', loadPreview);
+  </script>
+</body>
+</html>

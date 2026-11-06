@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>عرض المهام - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Style for the preview page */
+    .preview-header { text-align: center; margin-bottom: 40px; }
+    .preview-header h1 { font-size: 36px; color: var(--primary); margin-bottom: 10px; }
+    .preview-header p { color: var(--text-muted); font-size: 16px; }
+    
+    .task-card-preview {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .task-card-preview h3 { margin: 0 0 10px 0; color: var(--primary); font-size: 20px; }
+    .task-meta-row { display: flex; gap: 20px; font-size: 14px; color: var(--text-muted); margin-top: 10px; }
+    
+    @media (max-width: 768px) {
+      .task-card-preview { flex-direction: column; align-items: flex-start; gap: 15px; }
+    }
+  </style>
+</head>
+<body class="app-body" id="bodyRoot">
+
+  <div class="main-content" style="margin: 0 auto; max-width: 1000px; padding: 40px 20px;">
+    
+    <div class="preview-header">
+      <h1>لوحة عرض المهام</h1>
+      <p>نظرة عامة على جميع مهام مشاريع إعمار الخليج</p>
+    </div>
+
+    <div id="previewTaskList">
+      <p style="text-align: center; color: var(--text-muted);">جاري تحميل المهام من السيرفر...</p>
+    </div>
+
+  </div>
+
+  <script src="settings.js"></script>
+  
+  <script type="module">
+    import Saves from './saves.js';
+
+    async function loadPreview() {
+      const tasks = await Saves.getTasks();
+      const workers = await Saves.getWorkers();
+      const list = document.getElementById('previewTaskList');
+
+      if (tasks.length === 0) {
+        list.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 40px;">لا توجد مهام حالياً.</p>';
+        return;
+      }
+
+      // Sort newest first
+      tasks.sort((a, b) => b.createdAt - a.createdAt);
+
+      list.innerHTML = tasks.map(t => {
+        let statusArabic = ""; let badgeClass = "";
+        if (t.status === 'pending') { statusArabic = "قيد الانتظار"; badgeClass = "pending"; }
+        if (t.status === 'in_progress') { statusArabic = "قيد التنفيذ"; badgeClass = "in-progress"; }
+        if (t.status === 'review') { statusArabic = "بانتظار المراجعة"; badgeClass = "review"; }
+        if (t.status === 'done') { statusArabic = "تم الانتهاء"; badgeClass = "done"; }
+
+        const assignedWorkers = (t.workerIds || []).map(id => {
+          const w = workers.find(worker => worker.id === id);
+          return w ? w.name : 'غير معروف';
+        }).join(' ➔ ');
+
+        return `
+          <div class="task-card-preview">
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
+                <h3 style="margin: 0;">${t.title}</h3>
+                <span class="badge ${badgeClass}">${statusArabic}</span>
+              </div>
+              ${t.description ? `<p style="margin: 0 0 10px 0; color: var(--text-main);">${t.description}</p>` : ''}
+              
+              <div class="task-meta-row">
+                <span><i class="ph ph-users"></i> ${assignedWorkers}</span>
+                ${t.location ? `<span><i class="ph ph-map-pin"></i> ${t.location}</span>` : ''}
+                ${t.dueDate ? `<span><i class="ph ph-calendar"></i> ${t.dueDate}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', loadPreview);
+  </script>
+</body>
+</html>

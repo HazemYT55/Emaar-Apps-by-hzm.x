@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>معاينة الأجهزة - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: #1e293b; /* Dark background for contrast */
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    .header { text-align: center; margin-bottom: 40px; }
+    .header h1 { font-size: 32px; color: var(--accent); margin-bottom: 10px; }
+    .header p { color: #94a3b8; font-size: 16px; }
+
+    /* The layout of the devices */
+    .devices-container {
+      display: flex;
+      gap: 50px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-end; /* Align them to the bottom */
+    }
+
+    /* Phone Frame */
+    .phone-frame {
+      width: 375px;
+      height: 812px;
+      background: #000;
+      border-radius: 40px;
+      padding: 15px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 0 4px #334155;
+      position: relative;
+    }
+    .phone-frame::before {
+      content: '';
+      position: absolute;
+      top: 15px; left: 50%;
+      transform: translateX(-50%);
+      width: 120px; height: 25px;
+      background: #000;
+      border-bottom-left-radius: 15px;
+      border-bottom-right-radius: 15px;
+      z-index: 10;
+    }
+    .phone-frame iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 25px;
+      background: white;
+    }
+
+    /* Desktop Frame */
+    .desktop-frame {
+      width: 1000px;
+      height: 700px;
+      background: #000;
+      border-radius: 15px;
+      padding: 15px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+    .desktop-frame iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 8px;
+      background: white;
+    }
+
+    /* Controls */
+    .controls {
+      margin-bottom: 30px;
+      display: flex;
+      gap: 20px;
+      background: var(--surface);
+      padding: 15px 30px;
+      border-radius: 50px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .controls button {
+      background: transparent;
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 10px 20px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .controls button:hover, .controls button.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    /* Mobile responsiveness for the preview page itself */
+    @media (max-width: 1100px) {
+      .desktop-frame { width: 100%; max-width: 800px; height: 500px; }
+    }
+    @media (max-width: 500px) {
+      .phone-frame { width: 100%; max-width: 375px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1><i class="ph ph-devices"></i> معاينة الأجهزة</h1>
+    <p>شاهد كيف يبدو التطبيق على الموبايل والكمبيوتر في نفس الوقت.</p>
+  </div>
+
+  <div class="controls">
+    <button onclick="loadUrl('preview_tasks.html', this)" class="active">عرض المهام</button>
+    <button onclick="loadUrl('preview_worker.html', this)">عرض الفريق</button>
+  </div>
+
+  <div class="devices-container">
+    
+    <!-- Phone Preview -->
+    <div class="phone-frame">
+      <iframe id="phoneIframe" src="preview_tasks.html"></iframe>
+    </div>
+
+    <!-- Desktop Preview -->
+    <div class="desktop-frame">
+      <iframe id="desktopIframe" src="preview_tasks.html"></iframe>
+    </div>
+
+  </div>
+
+  <script>
+    // This function changes the URL inside both the phone and desktop frames
+    function loadUrl(url, btn) {
+      // Update iframes
+      document.getElementById('phoneIframe').src = url;
+      document.getElementById('desktopIframe').src = url;
+
+      // Update active button styling
+      document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Play click sound if available
+      if (typeof Sounds !== 'undefined') Sounds.playClick();
+    }
+  </script>
+</body>
+</html>

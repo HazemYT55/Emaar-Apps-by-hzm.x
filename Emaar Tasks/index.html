@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تسجيل الدخول - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .social-row { display: flex; gap: 15px; margin-bottom: 20px; width: 100%; }
+    .social-btn {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: #ffffff !important; color: #000000 !important; border: 1px solid #ccc;
+      border-radius: 8px; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .social-btn:hover { background: #f0f0f0 !important; border-color: var(--primary); }
+    .social-btn img { width: 20px; height: 20px; }
+    #loginScreen .card, #loginScreen h1, #loginScreen p, #loginScreen label, #loginScreen a { color: #1e293b !important; }
+    #loginScreen input, #loginScreen select { color: #1e293b !important; background: #f8fafc !important; }
+    
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: url('assets/bg-login.webp') center/cover no-repeat; }
+  </style>
+</head>
+<body class="app-body" id="bodyRoot">
+
+  <div id="loginScreen" style="width: 100%; max-width: 420px; padding: 20px;">
+    <div class="card" style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <img src="assets/logo.jpg" alt="Logo" style="height: 60px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+        <h1 style="color: #0f4c81 !important; margin-bottom: 8px;">إعمار للمهام</h1>
+        <p style="color: #64748b !important; font-size: 14px;" id="loginSubtitle">مرحباً بك، يرجى تسجيل الدخول.</p>
+      </div>
+      
+      <div class="social-row">
+        <button class="social-btn" onclick="handleGoogleLogin()"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"> Google</button>
+        <button class="social-btn" onclick="handleGithubLogin()"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/github.svg" alt="GitHub"> GitHub</button>
+      </div>
+      
+      <div style="display: flex; align-items: center; margin-bottom: 20px;">
+        <div style="flex: 1; height: 1px; background: #ccc;"></div>
+        <span style="padding: 0 10px; color: #64748b !important; font-size: 12px;">أو باستخدام البريد الإلكتروني</span>
+        <div style="flex: 1; height: 1px; background: #ccc;"></div>
+      </div>
+      
+      <div class="form-group" id="workerSelectGroup" style="display: none;">
+        <label>اختر اسمك من قائمة العمال</label>
+        <select id="signupWorkerSelect">
+            <option value="">-- جاري تحميل العمال --</option>
+        </select>
+      </div>
+
+      <div class="form-group"><label>البريد الإلكتروني</label><input type="email" id="loginEmail" placeholder="yourname@example.com"></div>
+      <div class="form-group"><label>كلمة المرور</label><input type="password" id="loginPassword" placeholder="••••••••"></div>
+      
+      <button id="authBtn" class="accent" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px;" onclick="handleAuth()">تسجيل الدخول</button>
+      
+      <div style="text-align: center; margin-top: 15px;">
+        <a href="#" id="toggleAuth" style="color: #0f4c81 !important; font-size: 14px; text-decoration: underline;" onclick="toggleAuthMode(event)">ليس لديك حساب؟ إنشاء حساب جديد</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="sounds.js"></script>
+  <script src="settings.js"></script>
+  
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import Saves from './saves.js';
+    import { doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, sendEmailVerification, GoogleAuthProvider, GithubAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    // ONLY these emails get to see the Admin Dashboard
+    const ADMIN_EMAILS = ["hazemyt55@gmail.com", "m.salama@emaargulf.com"];
+    let isSignUpMode = false;
+
+    const googleProvider = new GoogleAuthProvider();
+    const githubProvider = new GithubAuthProvider();
+
+    async function loadWorkersForSignup() {
+        const querySnapshot = await getDocs(collection(db, 'workers'));
+        const select = document.getElementById('signupWorkerSelect');
+        select.innerHTML = '<option value="">-- اختر اسمك --</option>';
+        querySnapshot.forEach((doc) => {
+            const w = doc.data();
+            select.innerHTML += `<option value="${doc.id}">${w.name} (${w.role})</option>`;
+        });
+    }
+    loadWorkersForSignup();
+
+    window.toggleAuthMode = function(e) {
+      e.preventDefault();
+      isSignUpMode = !isSignUpMode;
+      document.getElementById('workerSelectGroup').style.display = isSignUpMode ? 'block' : 'none';
+      document.getElementById('authBtn').textContent = isSignUpMode ? 'إنشاء حساب' : 'تسجيل الدخول';
+      document.getElementById('loginSubtitle').textContent = isSignUpMode ? 'قم بإنشاء حساب جديد للبدء.' : 'مرحباً بك، يرجى تسجيل الدخول.';
+      document.getElementById('toggleAuth').textContent = isSignUpMode ? 'لديك حساب بالفعل؟ تسجيل الدخول' : 'ليس لديك حساب؟ إنشاء حساب جديد';
+    };
+
+    window.handleGoogleLogin = async function() {
+      try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const user = result.user;
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) {
+          // If a new user signs in with Google, check if they are admin
+          const role = ADMIN_EMAILS.includes(user.email) ? 'عضو' : 'عامل';
+          await setDoc(docRef, { name: user.displayName || 'مستخدم جوجل', email: user.email, role: role, createdAt: Date.now() });
+        }
+      } catch (error) {
+        if(error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') alert("حدث خطأ: " + error.message);
+      }
+    };
+
+    window.handleGithubLogin = async function() {
+      try {
+        const result = await signInWithPopup(auth, githubProvider);
+        const user = result.user;
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) {
+          const role = ADMIN_EMAILS.includes(user.email) ? 'عضو' : 'عامل';
+          await setDoc(docRef, { name: user.displayName || 'مستخدم جيت هاب', email: user.email, role: role, createdAt: Date.now() });
+        }
+      } catch (error) {
+        if(error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') alert("حدث خطأ: " + error.message);
+      }
+    };
+
+    window.handleAuth = async function() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+      const selectedWorkerId = document.getElementById('signupWorkerSelect').value;
+
+      if (!email || !password) return alert('الرجاء إدخال البريد الإلكتروني وكلمة المرور.');
+      if (isSignUpMode && !selectedWorkerId) return alert('الرجاء اختيار اسمك من قائمة العمال.');
+
+      try {
+        if (isSignUpMode) {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          await sendEmailVerification(userCredential.user);
+          
+          const selectedOptionText = document.getElementById('signupWorkerSelect').options[document.getElementById('signupWorkerSelect').selectedIndex].text;
+          
+          // Register as Worker
+          await setDoc(doc(db, "users", userCredential.user.uid), { 
+              name: selectedOptionText, 
+              email: email, 
+              role: 'عامل', 
+              workerId: selectedWorkerId,
+              createdAt: Date.now() 
+          });
+        } else {
+          await signInWithEmailAndPassword(auth, email, password);
+        }
+      } catch (error) {
+        alert("حدث خطأ: " + error.message);
+      }
+    };
+
+    // --- THE ROUTER ---
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // 1. Check if the email is in the Admin list
+        if (ADMIN_EMAILS.includes(user.email)) {
+            window.location.href = 'dashboard.html'; // Send to Admin
+        } else {
+            // 2. If not Admin, send to Worker Dashboard
+            window.location.href = 'worker_dashboard.html'; 
+        }
+      }
+    });
+  </script>
+</body>
+</html>

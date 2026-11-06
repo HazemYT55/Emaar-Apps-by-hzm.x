@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ملفي الشخصي - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="app-body" id="bodyRoot">
+
+  <div class="sidebar">
+    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار الخليج</div>
+    <a href="worker_dashboard.html"><i class="ph ph-check-square-offset"></i> مهامي</a>
+    <a href="worker_board.html"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
+    <a href="worker_profile.html" class="active"><i class="ph ph-user"></i> ملفي الشخصي</a>
+    <a href="worker_settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
+    <a href="#" onclick="handleLogout(event)" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
+  </div>
+
+  <div class="main-content">
+    <h1>ملفي الشخصي</h1>
+    <p class="subtitle">تحديث بياناتي الشخصية.</p>
+
+    <div class="card" style="max-width: 600px;">
+      <div id="profileContent">
+        <p>جاري تحميل البيانات...</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="sounds.js"></script>
+  <script src="settings.js"></script>
+  
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import Saves from './saves.js';
+    import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    let currentUid = null;
+    let currentWorkerId = null;
+    let timeoutTimer;
+
+    window.handleLogout = async function(e) {
+      e.preventDefault();
+      await signOut(auth);
+      window.location.href = 'index.html';
+    };
+
+    // --- THE SAFETY NET ---
+    timeoutTimer = setTimeout(() => {
+        document.getElementById('profileContent').innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <i class="ph ph-warning-circle" style="font-size: 48px; color: var(--danger);"></i>
+                <h3 style="color: var(--danger); margin-top: 10px;">انتهت مهلة الاتصال</h3>
+                <p>لم يتمكن التطبيق من قراءة حسابك. جرب تسجيل الخروج والدخول مرة أخرى.</p>
+                <a href="index.html" style="display: inline-block; background: var(--primary); color: white; padding: 10px 20px; border-radius: 6px; margin-top: 15px; text-decoration: none;">تسجيل الدخول</a>
+            </div>
+        `;
+    }, 5000); // 5 seconds max
+
+    onAuthStateChanged(auth, async (user) => {
+      clearTimeout(timeoutTimer); // Clear the timeout if auth works
+
+      if (!user) { 
+          window.location.href = 'index.html'; 
+          return; 
+      }
+
+      currentUid = user.uid;
+      
+      // Directly get the user document
+      try {
+          const docRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            const userData = docSnap.data();
+            if (userData.workerId) {
+               currentWorkerId = userData.workerId;
+               loadProfile();
+            } else {
+               document.getElementById('profileContent').innerHTML = `
+                  <div style="text-align: center; padding: 40px;">
+                     <i class="ph ph-warning-circle" style="font-size: 48px; color: var(--danger); margin-bottom: 15px;"></i>
+                     <h2 style="color: var(--danger);">لم يتم ربط حسابك</h2>
+                     <p style="color: var(--text-muted);">يرجى مراجعة المدير لربط حسابك بملف عامل.</p>
+                  </div>
+               `;
+            }
+          } else {
+             document.getElementById('profileContent').innerHTML = '<p>لم يتم العثور على بياناتك في النظام.</p>';
+          }
+      } catch (error) {
+          console.error("Error fetching user data:", error);
+          document.getElementById('profileContent').innerHTML = `<p style="color: red;">خطأ في الاتصال: ${error.message}</p>`;
+      }
+    });
+
+    async function loadProfile() {
+      try {
+          const workers = await Saves.getWorkers();
+          const worker = workers.find(w => w.id === currentWorkerId);
+
+          if (!worker) {
+              document.getElementById('profileContent').innerHTML = '<p>خطأ: لم يتم العثور على بيانات العامل في قاعدة البيانات.</p>';
+              return;
+          }
+
+          document.getElementById('profileContent').innerHTML = `
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div style="width: 100px; height: 100px; background: var(--primary); border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 15px auto;">
+                    <i class="ph ph-user" style="font-size: 50px; color: white;"></i>
+                </div>
+                <h2 style="color: var(--primary);">${worker.name || 'عامل'}</h2>
+                <p style="color: var(--text-muted);">${worker.role || 'عامل'}</p>
+            </div>
+
+            <form onsubmit="saveProfile(event)">
+                <div class="form-group">
+                    <label>الاسم الكامل</label>
+                    <input type="text" id="profileName" value="${worker.name || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label>رقم الهاتف</label>
+                    <input type="text" id="profilePhone" value="${worker.phone || ''}">
+                </div>
+                <button type="submit" style="width: 100%; justify-content: center; background: var(--primary); margin-top: 10px;">
+                    <i class="ph ph-check"></i> حفظ التعديلات
+                </button>
+            </form>
+          `;
+      } catch (err) {
+          console.error("Error loading profile:", err);
+          document.getElementById('profileContent').innerHTML = `<p style="color: red;">حدث خطأ أثناء تحميل الملف: ${err.message}</p>`;
+      }
+    }
+
+    window.saveProfile = async function(e) {
+        e.preventDefault();
+        const newName = document.getElementById('profileName').value.trim();
+        const newPhone = document.getElementById('profilePhone').value.trim();
+
+        if (!newName) return alert('الاسم مطلوب.');
+
+        if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+
+        try {
+            await Saves.updateWorker(currentWorkerId, { name: newName, phone: newPhone });
+            await updateDoc(doc(db, 'users', currentUid), { name: newName });
+            alert('تم حفظ بياناتك بنجاح!');
+            loadProfile();
+        } catch (err) {
+            alert('حدث خطأ أثناء الحفظ: ' + err.message);
+        }
+    };
+  </script>
+</body>
+</html>

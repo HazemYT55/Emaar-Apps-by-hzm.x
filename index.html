@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emaar Portal - بوابة إعمار</title>
+  <link rel="icon" href="data:,">
+  
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web/src/regular/style.css">
+
+  <style>
+    :root {
+      --primary: #0f4c81;      
+      --accent: #d4af37;       
+      --bg: #f4f7f9;
+      --surface: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+    }
+
+    * { box-sizing: border-box; font-family: 'Cairo', sans-serif; margin: 0; padding: 0; }
+    
+    body {
+      /* Emaar Background Image */
+      background: url('Emaar Tasks/assets/bg-login.webp') center/cover no-repeat fixed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--text-main);
+    }
+
+    /* Glassmorphism Card */
+    .portal-card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border-radius: 24px;
+      width: 100%;
+      max-width: 1000px;
+      padding: 50px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    /* Header */
+    .portal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 20px;
+      margin-bottom: 40px;
+    }
+    .portal-header h1 {
+      color: var(--primary);
+      font-size: 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .portal-header h1 img {
+      height: 50px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .portal-header p {
+      color: var(--text-muted);
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    /* Apps Grid */
+    .apps-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 25px;
+    }
+
+    .app-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 30px;
+      text-decoration: none;
+      color: var(--text-main);
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .app-card:hover {
+      transform: translateY(-5px);
+      border-color: var(--primary);
+      box-shadow: 0 15px 30px rgba(15, 76, 129, 0.15);
+    }
+
+    .app-card::before {
+      content: '';
+      position: absolute;
+      top: 0; right: 0; width: 6px; height: 100%;
+      background: var(--accent);
+      transform: scaleY(0);
+      transition: transform 0.3s ease;
+      transform-origin: top;
+    }
+
+    .app-card:hover::before {
+      transform: scaleY(1);
+    }
+
+    .app-icon {
+      width: 60px;
+      height: 60px;
+      background: #f1f5f9;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: var(--primary);
+      transition: all 0.3s;
+    }
+
+    .app-card:hover .app-icon {
+      background: var(--primary);
+      color: var(--accent);
+    }
+
+    .app-info h3 {
+      font-size: 22px;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .app-info p {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Footer Links */
+    .portal-footer {
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .portal-footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+      padding: 8px 15px;
+      border-radius: 20px;
+      background: var(--bg);
+    }
+
+    .portal-footer a:hover {
+      color: white;
+      background: var(--primary);
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .portal-card { padding: 25px; }
+      .portal-header { flex-direction: column; text-align: center; gap: 15px; }
+      .apps-grid { grid-template-columns: 1fr; }
+      .app-card { padding: 20px; flex-direction: row; align-items: center; text-align: right; }
+      .app-icon { flex-shrink: 0; }
+      .portal-footer { gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="portal-card">
+    
+    <!-- Header -->
+    <div class="portal-header">
+      <h1>
+        <img src="Emaar Tasks/assets/logo.jpg" alt="Emaar Logo" onerror="this.style.display='none'">
+        بوابة إعمار
+      </h1>
+      <p>نظام إدارة المشاريع المتكامل</p>
+    </div>
+
+    <!-- The Apps Grid -->
+    <div class="apps-grid">
+      
+      <!-- Emaar Tasks App -->
+      <a href="Emaar Tasks/index.html" class="app-card">
+        <div class="app-icon"><i class="ph ph-squares-four"></i></div>
+        <div class="app-info">
+          <h3>إدارة المهام (Tasks)</h3>
+          <p>نظام تسجيل الدخول، إدارة الفريق، لوحة المهام (Kanban)، وتوزيع المهام على العمال.</p>
+        </div>
+      </a>
+
+      <!-- Preview Devices App -->
+      <a href="Emaar Tasks/preview_devices.html" class="app-card">
+        <div class="app-icon"><i class="ph ph-devices"></i></div>
+        <div class="app-info">
+          <h3>معاينة الأجهزة (Device Preview)</h3>
+          <p>شاهد كيف يبدو التطبيق على شاشة الموبايل والكمبيوتر في نفس الوقت.</p>
+        </div>
+      </a>
+
+      <!-- Preview Tasks App -->
+      <a href="Emaar Tasks/preview_tasks.html" class="app-card">
+        <div class="app-icon"><i class="ph ph-monitor-play"></i></div>
+        <div class="app-info">
+          <h3>شاشة عرض المهام (Tasks Screen)</h3>
+          <p>شاشة مخصصة للعرض فقط (بدون تعديل) يمكن عرضها على شاشات المكاتب.</p>
+        </div>
+      </a>
+
+      <!-- Preview Workers App -->
+      <a href="Emaar Tasks/preview_worker.html" class="app-card">
+        <div class="app-icon"><i class="ph ph-identification-badge"></i></div>
+        <div class="app-info">
+          <h3>شاشة عرض الفريق (Team Screen)</h3>
+          <p>دليل العمال والمهندسين مع صورهم وعدد المهام المسندة إليهم.</p>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- Footer Social Links -->
+    <div class="portal-footer">
+      <a href="https://emaargulf.com" target="_blank"><i class="ph ph-globe"></i> الموقع الرسمي</a>
+      <a href="https://www.linkedin.com/company/emaargulf" target="_blank"><i class="ph ph-linkedin-logo"></i> LinkedIn</a>
+      <a href="https://www.instagram.com/emaar_gulf/?hl=en" target="_blank"><i class="ph ph-instagram-logo"></i> Instagram</a>
+      <a href="https://x.com/emaar_gulf" target="_blank"><i class="ph ph-x-logo"></i> X (Twitter)</a>
+      <a href="https://www.tiktok.com/@emaar_gulf" target="_blank"><i class="ph ph-tiktok-logo"></i> TikTok</a>
+    </div>
+
+  </div>
+
+</body>
+</html>

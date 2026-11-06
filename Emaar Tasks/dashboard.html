@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة القيادة - إعمار للمهام</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .dashboard-section { margin-bottom: 40px; }
+    .section-title { font-size: 20px; color: var(--primary); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-content { background: var(--surface); padding: 24px; border-radius: 12px; width: 100%; max-width: 550px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .kanban-task, .task-item { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+    .kanban-task:hover, .task-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: var(--primary) !important; }
+    .order-btn { background: #f1f5f9; border: 1px solid #cbd5e1; color: #0f4c81; border-radius: 4px; cursor: pointer; padding: 2px 5px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-size: 12px; }
+    .order-btn:hover:not(:disabled) { background: #0f4c81; color: white; }
+    .order-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  </style>
+</head>
+<body class="app-body" id="bodyRoot">
+
+  <!-- Task Details Modal -->
+  <div id="taskDetailsModal" class="modal-overlay">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+        <h2 id="viewTaskTitle" style="color: var(--primary); margin: 0;"></h2>
+        <span id="viewTaskStatus" class="badge"></span>
+      </div>
+      <div style="margin-bottom: 20px;">
+        <h4 style="color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">التفاصيل (Description)</h4>
+        <p id="viewTaskDesc" style="background: var(--bg); padding: 15px; border-radius: 8px; line-height: 1.6;"></p>
+      </div>
+      <div style="margin-bottom: 20px;">
+        <h4 style="color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">تسلسل العمال (Assigned Workers)</h4>
+        <div id="viewTaskWorkers" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: bold; color: var(--primary);"></div>
+      </div>
+      <div class="grid-2">
+        <div><h4 style="color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">الموقع (Location)</h4><p id="viewTaskLocation" style="margin: 0;"><i class="ph ph-map-pin"></i> -</p></div>
+        <div><h4 style="color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">تاريخ التسليم (Due Date)</h4><p id="viewTaskDate" style="margin: 0;"><i class="ph ph-calendar"></i> -</p></div>
+      </div>
+      <button onclick="closeTaskDetailsModal()" style="width: 100%; justify-content: center; margin-top: 30px; background: var(--text-muted);"><i class="ph ph-x"></i> إغلاق</button>
+    </div>
+  </div>
+
+  <!-- Edit Task Modal -->
+  <div id="editModal" class="modal-overlay">
+    <div class="modal-content">
+      <h2 style="margin-bottom: 20px; color: var(--primary);"><i class="ph ph-pencil"></i> تعديل المهمة</h2>
+      <input type="hidden" id="editTaskId">
+      <div class="form-group"><label>عنوان المهمة</label><input type="text" id="editTitle"></div>
+      <div class="form-group"><label>التفاصيل</label><textarea id="editDesc"></textarea></div>
+      
+      <div class="form-group">
+        <label>المشروع (Project)</label>
+        <select id="editTaskProject"></select>
+      </div>
+
+      <div class="form-group" style="background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+        <label style="margin-bottom: 10px;"><i class="ph ph-users"></i> تسلسل العمال (Workers Chain)</label>
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+          <select id="editWorkerDropdown" style="flex: 1;"></select>
+          <button type="button" onclick="addWorkerToEditChain()" style="background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer;"><i class="ph ph-plus"></i> إضافة</button>
+        </div>
+        <div id="editWorkersChainList" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; min-height: 40px;"></div>
+        <button type="button" onclick="clearEditWorkersChain()" style="background: transparent; color: var(--danger); border: none; font-size: 12px; margin-top: 10px; cursor: pointer;"><i class="ph ph-trash"></i> مسح القائمة</button>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group"><label>الموقع</label><input type="text" id="editLocation"></div>
+        <div class="form-group"><label>تاريخ التسليم</label><input type="date" id="editDate"></div>
+      </div>
+      
+      <div class="form-group">
+        <label>رابط الخريطة (Google Maps Link)</label>
+        <input type="url" id="editMapLink" placeholder="https://maps.google.com/...">
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button onclick="saveEditTask()" style="flex: 1; justify-content: center; background: var(--primary);"><i class="ph ph-check"></i> حفظ التعديلات</button>
+        <button onclick="closeEditModal()" style="flex: 1; justify-content: center; background: var(--text-muted);"><i class="ph ph-x"></i> إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'">إعمار الخليج</div>
+    <a href="dashboard.html" class="active"><i class="ph ph-squares-four"></i> لوحة القيادة</a>
+    <a href="projects.html"><i class="ph ph-folder-open"></i> مجلد المشاريع</a>
+    <a href="fill_info.html"><i class="ph ph-users"></i> الفريق والإعدادات</a>
+    <a href="tasks.html"><i class="ph ph-list-dashes"></i> إنشاء مهمة</a>
+    <a href="report.html"><i class="ph ph-presentation"></i> تقارير المشاريع</a>
+    <a href="settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
+    <a href="#" onclick="handleLogout(event)" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
+  </div>
+
+  <div class="main-content">
+    <h1 id="greeting">جاري التحميل...</h1>
+    <p class="subtitle" id="roleText"></p>
+
+    <div class="dashboard-section">
+      <div class="grid-3" style="margin-bottom: 30px;">
+        <div class="stat-card"><i class="ph ph-users"></i><div><h3 id="statWorkers">0</h3><p>فريق العمل</p></div></div>
+        <div class="stat-card"><i class="ph ph-list-checks"></i><div><h3 id="statTasks">0</h3><p>إجمالي المهام</p></div></div>
+        <div class="stat-card"><i class="ph ph-check-circle"></i><div><h3 id="statDone">0</h3><p>المهام المكتملة</p></div></div>
+      </div>
+
+      <div class="card" style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap;">
+        <div style="position: relative; width: 150px; height: 150px;">
+          <div id="statusCircle" style="width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(#cbd5e1 0% 100%); transition: background 1s ease;"></div>
+          <div style="position: absolute; inset: 15px; background: var(--surface); border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+            <span style="font-size: 24px; font-weight: bold; color: var(--primary);" id="totalTasksCount">0</span>
+            <span style="font-size: 12px; color: var(--text-muted);">إجمالي المهام</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
+          <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444;"></div> عاجل</div>
+          <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6;"></div> قيد التنفيذ</div>
+          <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #cbd5e1;"></div> لم يبدأ</div>
+          <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #10b981;"></div> تم الانتهاء</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-section">
+      <h2 class="section-title"><i class="ph ph-kanban"></i> لوحة المهام (Board)</h2>
+      <div class="kanban-board">
+        <div class="kanban-column">
+          <div class="kanban-column-header"><span><i class="ph ph-hourglass"></i> قيد الانتظار</span><span id="count-pending">0</span></div>
+          <div id="col-pending" class="kanban-dropzone" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+        </div>
+        <div class="kanban-column">
+          <div class="kanban-column-header"><span><i class="ph ph-spinner"></i> قيد التنفيذ</span><span id="count-in_progress">0</span></div>
+          <div id="col-in_progress" class="kanban-dropzone" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+        </div>
+        <div class="kanban-column">
+          <div class="kanban-column-header"><span><i class="ph ph-eye"></i> بانتظار المراجعة</span><span id="count-review">0</span></div>
+          <div id="col-review" class="kanban-dropzone" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+        </div>
+        <div class="kanban-column">
+          <div class="kanban-column-header"><span><i class="ph ph-check-circle"></i> تم الانتهاء</span><span id="count-done">0</span></div>
+          <div id="col-done" class="kanban-dropzone" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="dashboard-section">
+        <h2 class="section-title"><i class="ph ph-list-dashes"></i> قائمة المهام (Tasks)</h2>
+        <div class="card" style="max-height: 500px; overflow-y: auto;"><div id="dashboardTaskList"></div></div>
+      </div>
+      <div class="dashboard-section">
+        <h2 class="section-title"><i class="ph ph-users-three"></i> الفريق (Workers)</h2>
+        <div class="card" style="max-height: 500px; overflow-y: auto;"><div id="dashboardWorkerList"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="sounds.js"></script>
+  <script src="settings.js"></script>
+  
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import Saves from './saves.js';
+    import { doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    const ADMIN_EMAILS = ["hazemyt55@gmail.com", "m.salama@emaargulf.com"];
+    let isAdmin = false;
+    let allTasks = [];
+    let allWorkers = [];
+    let editingWorkerIds = [];
+
+    window.handleLogout = async function(e) {
+      e.preventDefault();
+      await signOut(auth);
+      window.location.href = 'index.html';
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = 'index.html';
+        return;
+      }
+
+      // --- THE ULTIMATE SECURITY CHECK ---
+      // If the logged-in email is NOT in the admin list, kick them to the worker dashboard immediately!
+      if (!ADMIN_EMAILS.includes(user.email)) {
+          window.location.href = 'worker_dashboard.html';
+          return;
+      }
+
+      const docRef = doc(db, "users", user.uid);
+      const docSnap = await getDoc(docRef);
+      const userData = docSnap.exists() ? docSnap.data() : { name: user.email, role: 'عضو' };
+      
+      isAdmin = true;
+      document.getElementById('greeting').textContent = `مرحباً بعودتك، ${userData.name}`;
+      document.getElementById('roleText').textContent = `الدور: ${userData.role} | البريد: ${user.email}`;
+
+      allWorkers = await Saves.getWorkers();
+      allTasks = await Saves.getTasks();
+      
+      document.getElementById('editWorkerDropdown').innerHTML = allWorkers.map(w => `<option value="${w.id}">${w.name} (${w.role})</option>`).join('');
+
+      const projectsSnap = await getDocs(collection(db, 'projects'));
+      const editProjectSelect = document.getElementById('editTaskProject');
+      if (editProjectSelect) {
+          editProjectSelect.innerHTML = '<option value="">بدون مشروع</option>';
+          projectsSnap.forEach(d => {
+              editProjectSelect.innerHTML += `<option value="${d.id}">${d.data().name}</option>`;
+          });
+      }
+
+      renderAdminDashboard();
+    });
+
+    // ... (The rest of the renderAdminDashboard, renderKanbanBoard, etc. logic remains exactly the same as your previous file) ...
+    // I will include it below so you can copy the full file safely.
+    
+    function renderAdminDashboard() {
+      const doneTasks = allTasks.filter(t => t.status === 'done').length;
+      document.getElementById('statWorkers').textContent = allWorkers.length;
+      document.getElementById('statTasks').textContent = allTasks.length;
+      document.getElementById('statDone').textContent = doneTasks;
+      document.getElementById('totalTasksCount').textContent = allTasks.length;
+
+      renderKanbanBoard();
+      renderDashboardTaskList();
+      renderDashboardWorkerList();
+    }
+
+    function renderKanbanBoard() {
+      const columns = { 'pending': document.getElementById('col-pending'), 'in_progress': document.getElementById('col-in_progress'), 'review': document.getElementById('col-review'), 'done': document.getElementById('col-done') };
+      Object.values(columns).forEach(col => col.innerHTML = '');
+      let cRed=0, cBlue=0, cWhite=0, cGreen=0;
+
+      const groupedTasks = {
+        'pending': allTasks.filter(t => t.status === 'pending'),
+        'in_progress': allTasks.filter(t => t.status === 'in_progress'),
+        'review': allTasks.filter(t => t.status === 'review'),
+        'done': allTasks.filter(t => t.status === 'done')
+      };
+
+      Object.keys(groupedTasks).forEach(status => {
+          groupedTasks[status].sort((a, b) => {
+              const orderA = a.boardOrder !== undefined ? a.boardOrder : 9999;
+              const orderB = b.boardOrder !== undefined ? b.boardOrder : 9999;
+              return orderA - orderB;
+          });
+      });
+
+      allTasks.forEach(task => {
+        let isUrgent = false; let timeBadge = '';
+        if (task.dueDate && task.status !== 'done') {
+          const diffDays = Math.ceil((new Date(task.dueDate) - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+          if (diffDays <= 5 && diffDays >= 0) { isUrgent = true; timeBadge = `<span style="color: #ef4444; font-size: 11px;"><i class="ph ph-warning"></i> متبقي ${diffDays} أيام</span>`; }
+          else if (diffDays < 0) { isUrgent = true; timeBadge = `<span style="color: #ef4444; font-size: 11px;"><i class="ph ph-warning"></i> متأخرة</span>`; }
+        }
+        
+        if (task.status === 'done') cGreen++;
+        else if (isUrgent) cRed++;
+        else if (task.status === 'in_progress' || task.status === 'review') cBlue++;
+        else cWhite++;
+      });
+
+      Object.keys(groupedTasks).forEach(status => {
+          const col = columns[status];
+          const colTasks = groupedTasks[status];
+
+          colTasks.forEach((task, index) => {
+            const assignedWorkers = (task.workerIds || []).map(id => { const w = allWorkers.find(worker => worker.id === id); return w ? w.name : ''; }).join(' ➔ ');
+            
+            let isUrgent = false; let timeBadge = '';
+            if (task.dueDate && task.status !== 'done') {
+              const diffDays = Math.ceil((new Date(task.dueDate) - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+              if (diffDays <= 5 && diffDays >= 0) { isUrgent = true; timeBadge = `<span style="color: #ef4444; font-size: 11px;"><i class="ph ph-warning"></i> متبقي ${diffDays} أيام</span>`; }
+              else if (diffDays < 0) { isUrgent = true; timeBadge = `<span style="color: #ef4444; font-size: 11px;"><i class="ph ph-warning"></i> متأخرة</span>`; }
+            }
+
+            let circleColor = '#cbd5e1'; if (task.status === 'done') circleColor = '#10b981'; else if (isUrgent) circleColor = '#ef4444'; else if (task.status === 'in_progress' || task.status === 'review') circleColor = '#3b82f6'; 
+
+            const taskEl = document.createElement('div');
+            taskEl.className = 'kanban-task'; 
+            taskEl.draggable = true; 
+            taskEl.id = `task-${task.id}`;
+            taskEl.ondragstart = (e) => dragStart(e, task.id); 
+            taskEl.ondragend = (e) => e.target.classList.remove('dragging');
+            taskEl.onclick = () => openTaskDetails(task.id);
+
+            const editBtn = isAdmin ? `<button onclick="event.stopPropagation(); openEditModal('${task.id}')" style="background: transparent !important; border: none !important; color: var(--primary) !important; cursor: pointer; font-size: 16px;" title="تعديل"><i class="ph ph-pencil"></i></button>` : '';
+
+            const orderControls = isAdmin ? `
+              <div style="display: flex; flex-direction: column; gap: 2px; margin-left: 8px;">
+                <button class="order-btn" onclick="event.stopPropagation(); moveKanbanTask('${task.id}', '${status}', ${index}, -1)" ${index === 0 ? 'disabled' : ''}><i class="ph ph-caret-up"></i></button>
+                <button class="order-btn" onclick="event.stopPropagation(); moveKanbanTask('${task.id}', '${status}', ${index}, 1)" ${index === colTasks.length - 1 ? 'disabled' : ''}><i class="ph ph-caret-down"></i></button>
+              </div>
+            ` : '';
+
+            taskEl.innerHTML = `
+              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div class="kanban-task-title" style="flex:1;">${task.title}</div>
+                <div style="display: flex; gap: 5px; align-items: center;">
+                  ${editBtn}
+                  ${orderControls}
+                  <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${circleColor}; margin-right: 5px;"></div>
+                </div>
+              </div>
+              <div class="kanban-task-meta">
+                ${timeBadge}
+                <span><i class="ph ph-users"></i> ${assignedWorkers}</span>
+              </div>`;
+            col.appendChild(taskEl);
+          });
+      });
+
+      document.getElementById('count-pending').textContent = cWhite + cRed;
+      document.getElementById('count-in_progress').textContent = cBlue;
+      document.getElementById('count-review').textContent = document.getElementById('col-review').children.length;
+      document.getElementById('count-done').textContent = cGreen;
+
+      const total = allTasks.length; const circleElement = document.getElementById('statusCircle');
+      if (total === 0) { circleElement.style.background = `conic-gradient(#e2e8f0 0% 100%)`; } 
+      else {
+        const pR = (cRed/total)*100; const pB = (cBlue/total)*100; const pW = (cWhite/total)*100; const pG = (cGreen/total)*100;
+        let cp = 0; let gp = [];
+        if (pR > 0) { gp.push(`#ef4444 ${cp}% ${cp+pR}%`); cp+=pR; }
+        if (pB > 0) { gp.push(`#3b82f6 ${cp}% ${cp+pB}%`); cp+=pB; }
+        if (pW > 0) { gp.push(`#cbd5e1 ${cp}% ${cp+pW}%`); cp+=pW; }
+        if (pG > 0) { gp.push(`#10b981 ${cp}% 100%`); }
+        circleElement.style.background = `conic-gradient(${gp.join(', ')})`;
+      }
+    }
+
+    window.moveKanbanTask = async function(taskId, status, currentIndex, direction) {
+        let colTasks = allTasks.filter(t => t.status === status);
+        colTasks.sort((a, b) => {
+            const orderA = a.boardOrder !== undefined ? a.boardOrder : 9999;
+            const orderB = b.boardOrder !== undefined ? b.boardOrder : 9999;
+            return orderA - orderB;
+        });
+
+        const targetIndex = currentIndex + direction;
+        if (targetIndex < 0 || targetIndex >= colTasks.length) return;
+
+        const temp = colTasks[currentIndex];
+        colTasks[currentIndex] = colTasks[targetIndex];
+        colTasks[targetIndex] = temp;
+
+        for (let i = 0; i < colTasks.length; i++) {
+            await Saves.updateTask(colTasks[i].id, { boardOrder: i });
+        }
+
+        allTasks = await Saves.getTasks();
+        renderKanbanBoard();
+        if (typeof Sounds !== 'undefined') Sounds.playClick();
+    };
+
+    function renderDashboardTaskList() {
+      const list = document.getElementById('dashboardTaskList');
+      if (allTasks.length === 0) { list.innerHTML = '<p style="text-align:center; padding:20px;">لا توجد مهام.</p>'; return; }
+
+      allTasks.sort((a, b) => {
+          const orderA = a.dashOrder !== undefined ? a.dashOrder : (a.createdAt || 0);
+          const orderB = b.dashOrder !== undefined ? b.dashOrder : (b.createdAt || 0);
+          return orderA - orderB;
+      });
+
+      list.innerHTML = allTasks.map((t, index) => {
+        let statusArabic = ""; let badgeClass = "";
+        if (t.status === 'pending') { statusArabic = "قيد الانتظار"; badgeClass = "pending"; }
+        if (t.status === 'in_progress') { statusArabic = "قيد التنفيذ"; badgeClass = "in-progress"; }
+        if (t.status === 'review') { statusArabic = "بانتظار المراجعة"; badgeClass = "review"; }
+        if (t.status === 'done') { statusArabic = "تم الانتهاء"; badgeClass = "done"; }
+
+        const orderControls = isAdmin ? `
+          <div style="display: flex; flex-direction: column; gap: 2px; margin-left: 10px;">
+            <button class="order-btn" onclick="event.stopPropagation(); moveTask(${index}, -1)" ${index === 0 ? 'disabled' : ''}><i class="ph ph-caret-up"></i></button>
+            <button class="order-btn" onclick="event.stopPropagation(); moveTask(${index}, 1)" ${index === allTasks.length - 1 ? 'disabled' : ''}><i class="ph ph-caret-down"></i></button>
+          </div>
+        ` : '';
+
+        const editBtn = isAdmin ? `<button onclick="event.stopPropagation(); openEditModal('${t.id}')" style="background: transparent !important; border: none !important; color: var(--primary) !important; cursor: pointer; font-size: 18px; padding: 0 5px;" title="تعديل"><i class="ph ph-pencil"></i></button>` : '';
+
+        return `
+          <div class="task-item" style="display: flex; justify-content: space-between; align-items: center; border-right: 4px solid var(--primary); padding: 12px; margin-bottom: 10px;" onclick="openTaskDetails('${t.id}')">
+            <div style="display: flex; align-items: center;">
+                ${orderControls}
+                <div>
+                    <strong>${t.title}</strong>
+                    <p style="font-size: 12px; margin: 5px 0 0 0; color: var(--text-muted);">اضغط لرؤية التفاصيل</p>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center;">
+                ${editBtn}
+                <span class="badge ${badgeClass}">${statusArabic}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderDashboardWorkerList() {
+      const list = document.getElementById('dashboardWorkerList');
+      if (allWorkers.length === 0) { list.innerHTML = '<p style="text-align:center; padding:20px;">لا يوجد عمال.</p>'; return; }
+
+      allWorkers.sort((a, b) => {
+          const orderA = a.order !== undefined ? a.order : 9999;
+          const orderB = b.order !== undefined ? b.order : 9999;
+          return orderA - orderB;
+      });
+
+      list.innerHTML = allWorkers.map((w, index) => {
+        const wTasks = allTasks.filter(t => t.workerIds && t.workerIds.includes(w.id)).length;
+        
+        const orderControls = isAdmin ? `
+          <div style="display: flex; flex-direction: column; gap: 2px; margin-left: 10px;">
+            <button class="order-btn" onclick="moveWorkerDash(${index}, -1)" ${index === 0 ? 'disabled' : ''}><i class="ph ph-caret-up"></i></button>
+            <button class="order-btn" onclick="moveWorkerDash(${index}, 1)" ${index === allWorkers.length - 1 ? 'disabled' : ''}><i class="ph ph-caret-down"></i></button>
+          </div>
+        ` : '';
+
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; align-items: center;">
+                ${orderControls}
+                <div>
+                    <strong style="color: var(--primary);">${w.name}</strong> <span style="font-size: 12px; color: var(--text-muted);">(${w.role})</span>
+                </div>
+            </div>
+            <button onclick="window.location.href='profile.html?id=${w.id}'" style="background: var(--bg); color: var(--text-main); border: 1px solid var(--border); padding: 5px 10px; font-size: 12px; cursor: pointer;"><i class="ph ph-user-circle"></i> ${wTasks} مهام</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.moveTask = async function(index, direction) {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= allTasks.length) return;
+
+      const temp = allTasks[index];
+      allTasks[index] = allTasks[targetIndex];
+      allTasks[targetIndex] = temp;
+
+      for (let i = 0; i < allTasks.length; i++) {
+          await Saves.updateTask(allTasks[i].id, { dashOrder: i });
+      }
+
+      renderDashboardTaskList();
+      if (typeof Sounds !== 'undefined') Sounds.playClick();
+    };
+
+    window.moveWorkerDash = async function(index, direction) {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= allWorkers.length) return;
+
+      const temp = allWorkers[index];
+      allWorkers[index] = allWorkers[targetIndex];
+      allWorkers[targetIndex] = temp;
+
+      for (let i = 0; i < allWorkers.length; i++) {
+          await Saves.updateWorker(allWorkers[i].id, { order: i });
+      }
+
+      renderDashboardWorkerList();
+      if (typeof Sounds !== 'undefined') Sounds.playClick();
+    };
+
+    window.openTaskDetails = function(taskId) {
+        const task = allTasks.find(t => t.id === taskId);
+        if(!task) return;
+        const assignedWorkers = (task.workerIds || []).map(id => {
+          const w = allWorkers.find(worker => worker.id === id);
+          return `<span style="background: var(--primary); color: white; padding: 4px 10px; border-radius: 15px; font-size: 12px;">${w ? w.name : 'غير معروف'}</span>`;
+        }).join('<i class="ph ph-arrow-left"></i>');
+        document.getElementById('viewTaskTitle').textContent = task.title;
+        document.getElementById('viewTaskDesc').textContent = task.description || 'لا يوجد وصف.';
+        document.getElementById('viewTaskWorkers').innerHTML = assignedWorkers || 'لا يوجد عمال.';
+        document.getElementById('viewTaskLocation').innerHTML = task.location ? `<i class="ph ph-map-pin"></i> ${task.location}` : '<i class="ph ph-map-pin"></i> -';
+        document.getElementById('viewTaskDate').innerHTML = task.dueDate ? `<i class="ph ph-calendar"></i> ${task.dueDate}` : '<i class="ph ph-calendar"></i> -';
+        const badgeEl = document.getElementById('viewTaskStatus');
+        if (task.status === 'pending') { badgeEl.textContent = "قيد الانتظار"; badgeEl.className = "badge pending"; }
+        if (task.status === 'in_progress') { badgeEl.textContent = "قيد التنفيذ"; badgeEl.className = "badge in-progress"; }
+        if (task.status === 'review') { badgeEl.textContent = "بانتظار المراجعة"; badgeEl.className = "badge review"; }
+        if (task.status === 'done') { badgeEl.textContent = "تم الانتهاء"; badgeEl.className = "badge done"; }
+        document.getElementById('taskDetailsModal').style.display = 'flex';
+    };
+    window.closeTaskDetailsModal = function() { document.getElementById('taskDetailsModal').style.display = 'none'; };
+
+    window.allowDrop = (ev) => ev.preventDefault();
+    window.dragEnter = (ev) => { ev.preventDefault(); if (ev.target.classList.contains('kanban-dropzone')) ev.target.classList.add('drag-over'); };
+    window.dragLeave = (ev) => { if (ev.target.classList.contains('kanban-dropzone')) ev.target.classList.remove('drag-over'); };
+    window.dragStart = (ev, taskId) => { ev.dataTransfer.setData("text/plain", taskId); ev.target.classList.add('dragging'); };
+    window.drop = async (ev) => {
+      ev.preventDefault();
+      document.querySelectorAll('.kanban-dropzone').forEach(z => z.classList.remove('drag-over'));
+      const taskId = ev.dataTransfer.getData("text/plain");
+      const targetCol = ev.target.closest('.kanban-column');
+      if (!targetCol) return;
+      const newStatus = targetCol.querySelector('.kanban-dropzone').id.replace('col-', '');
+      const task = allTasks.find(t => t.id === taskId);
+      if (task && task.status !== newStatus) {
+        if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+        await Saves.updateTask(taskId, { status: newStatus });
+        task.status = newStatus;
+        renderAdminDashboard();
+      }
+    };
+
+    window.openEditModal = function(taskId) {
+      const task = allTasks.find(t => t.id === taskId);
+      if (!task) return;
+      document.getElementById('editTaskId').value = task.id;
+      document.getElementById('editTitle').value = task.title;
+      document.getElementById('editDesc').value = task.description || '';
+      document.getElementById('editLocation').value = task.location || '';
+      document.getElementById('editMapLink').value = task.mapLink || '';
+      document.getElementById('editDate').value = task.dueDate || '';
+      
+      const editProjectSelect = document.getElementById('editTaskProject');
+      if (editProjectSelect) editProjectSelect.value = task.projectId || "";
+
+      editingWorkerIds = task.workerIds ? [...task.workerIds] : [];
+      renderEditWorkersChain();
+      document.getElementById('editModal').style.display = 'flex';
+    };
+    window.closeEditModal = function() { document.getElementById('editModal').style.display = 'none'; };
+    window.addWorkerToEditChain = function() {
+      const workerId = document.getElementById('editWorkerDropdown').value;
+      if (!workerId) return;
+      if (editingWorkerIds.includes(workerId)) return alert('هذا العامل موجود بالفعل.');
+      editingWorkerIds.push(workerId);
+      renderEditWorkersChain();
+    };
+    window.clearEditWorkersChain = function() { editingWorkerIds = []; renderEditWorkersChain(); };
+    function renderEditWorkersChain() {
+      const container = document.getElementById('editWorkersChainList');
+      if (editingWorkerIds.length === 0) { container.innerHTML = '<span style="color: var(--text-muted); font-size: 13px;">لم يتم اختيار عمال.</span>'; return; }
+      container.innerHTML = editingWorkerIds.map((id, index) => {
+        const worker = allWorkers.find(w => w.id === id);
+        const isLast = index === editingWorkerIds.length - 1;
+        return `<span style="background: var(--primary); color: white; padding: 5px 12px; border-radius: 20px; font-size: 13px;">${worker ? worker.name : 'غير معروف'}</span>${!isLast ? '<i class="ph ph-arrow-left" style="color: var(--text-muted);"></i>' : ''}`;
+      }).join('');
+    }
+    window.saveEditTask = async function() {
+      const taskId = document.getElementById('editTaskId').value;
+      const title = document.getElementById('editTitle').value.trim();
+      const description = document.getElementById('editDesc').value.trim();
+      const location = document.getElementById('editLocation').value.trim();
+      const mapLink = document.getElementById('editMapLink').value.trim();
+      const dueDate = document.getElementById('editDate').value;
+      const projectId = document.getElementById('editTaskProject').value;
+
+      if (!title) return alert('عنوان المهمة مطلوب.');
+      if (editingWorkerIds.length === 0) return alert('يجب أن تحتوي المهمة على عامل واحد على الأقل.');
+
+      await Saves.updateTask(taskId, { 
+          title, description, location, mapLink, dueDate, workerIds: editingWorkerIds, projectId: projectId || null 
+      });
+      
+      closeEditModal();
+      allTasks = await Saves.getTasks();
+      renderAdminDashboard();
+      if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+    };
+  </script>
+</body>
+</html>

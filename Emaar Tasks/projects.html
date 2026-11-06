@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مجلد المشاريع - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .project-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+      margin-top: 30px;
+    }
+    .project-folder {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 30px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .project-folder:hover {
+      transform: translateY(-5px);
+      border-color: var(--primary);
+      box-shadow: 0 10px 25px rgba(15, 76, 129, 0.15);
+    }
+    .project-folder i {
+      font-size: 60px;
+      color: var(--accent);
+      margin-bottom: 15px;
+    }
+    .project-folder h3 {
+      color: var(--primary);
+      font-size: 20px;
+      margin-bottom: 5px;
+    }
+    .project-folder p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .project-folder .delete-btn {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: transparent;
+      color: var(--danger);
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .project-folder:hover .delete-btn {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="app-body" id="bodyRoot">
+
+  <div class="sidebar">
+    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار الخليج</div>
+    <a href="index.html"><i class="ph ph-squares-four"></i> لوحة القيادة</a>
+    <a href="projects.html" class="active"><i class="ph ph-folder-open"></i> مجلد المشاريع</a>
+    <a href="fill_info.html"><i class="ph ph-users"></i> الفريق والإعدادات</a>
+    <a href="tasks.html"><i class="ph ph-list-dashes"></i> قائمة المهام</a>
+    <a href="report.html"><i class="ph ph-robot"></i> تقرير الذكاء الاصطناعي</a>
+    <a href="settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
+    <a href="index.html" style="color: #ef4444;"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
+  </div>
+
+  <div class="main-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <div>
+        <h1 style="margin: 0;">مجلد المشاريع</h1>
+        <p class="subtitle" style="margin: 0;">قم بتنظيم مشاريع إعمار في مجلدات منفصلة.</p>
+      </div>
+      <button onclick="createProject()" style="background: var(--primary); color: white; padding: 12px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+        <i class="ph ph-folder-plus"></i> مشروع جديد
+      </button>
+    </div>
+
+    <div id="projectsContainer" class="project-grid">
+      <!-- Projects will load here -->
+    </div>
+  </div>
+
+  <script src="sounds.js"></script>
+  <script src="settings.js"></script>
+  
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import { collection, doc, getDocs, addDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    let allProjects = [];
+    let allTasks = [];
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        await loadProjects();
+      }
+    });
+
+    async function loadProjects() {
+      const container = document.getElementById('projectsContainer');
+      
+      // Fetch projects
+      const projSnap = await getDocs(collection(db, 'projects'));
+      allProjects = projSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Fetch tasks to count them per project
+      const taskSnap = await getDocs(collection(db, 'tasks'));
+      allTasks = taskSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      if (allProjects.length === 0) {
+        container.innerHTML = '<p style="text-align:center; grid-column: 1 / -1; color: var(--text-muted); padding: 40px;">لا توجد مشاريع بعد. اضغط على "مشروع جديد" للبدء.</p>';
+        return;
+      }
+
+      container.innerHTML = allProjects.map(p => {
+        const projectTasks = allTasks.filter(t => t.projectId === p.id).length;
+        return `
+          <div class="project-folder" onclick="window.location.href='board.html?projectId=${p.id}'">
+            <button class="delete-btn" onclick="event.stopPropagation(); deleteProject('${p.id}')" title="حذف المشروع"><i class="ph ph-trash"></i></button>
+            <i class="ph ph-folder"></i>
+            <h3>${p.name}</h3>
+            <p>${projectTasks} مهام</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.createProject = async function() {
+      const name = prompt('أدخل اسم المشروع الجديد:');
+      if (!name || name.trim() === '') return;
+
+      if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+
+      await addDoc(collection(db, 'projects'), {
+        name: name.trim(),
+        createdAt: Date.now()
+      });
+
+      await loadProjects();
+    };
+
+    window.deleteProject = async function(id) {
+      if (confirm('هل أنت متأكد من حذف هذا المشروع؟ سيتم حذف المجلد فقط، ولكن المهام ستبقى موجودة.')) {
+        await deleteDoc(doc(db, 'projects', id));
+        await loadProjects();
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ملف العامل - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="app-body" id="bodyRoot">
+
+  <div class="sidebar">
+    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار</div>
+    <a href="dashboard.html"><i class="ph ph-squares-four"></i> لوحة القيادة</a> <!-- CHANGED TO dashboard.html -->
+    <a href="projects.html"><i class="ph ph-folder-open"></i> مجلد المشاريع</a>
+    <a href="fill_info.html"><i class="ph ph-users"></i> الفريق والإعدادات</a>
+    <a href="board.html" class="active"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
+    <a href="tasks.html"><i class="ph ph-list-dashes"></i> قائمة المهام</a>
+    <a href="report.html"><i class="ph ph-robot"></i> تقرير الذكاء الاصطناعي</a>
+    <a href="settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
+    <a href="#" onclick="handleLogout(event)" style="color: #ef4444;"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
+  </div>
+  
+  <div class="main-content">
+    <button onclick="window.location.href='fill_info.html'" style="background: var(--bg); color: var(--text-main); border: 1px solid var(--border); margin-bottom: 20px;"><i class="ph ph-arrow-right"></i> العودة للفريق</button>
+    
+    <div id="profileContent">
+      <p>جاري تحميل البيانات...</p>
+    </div>
+  </div>
+
+  <script src="sounds.js"></script>
+  <script src="settings.js"></script>
+  
+  <script type="module">
+    import Saves from './saves.js';
+
+    async function loadProfile() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const workerId = urlParams.get('id');
+
+      if (!workerId) {
+        document.getElementById('profileContent').innerHTML = '<h2>خطأ: لم يتم تحديد العامل.</h2>';
+        return;
+      }
+
+      const workers = await Saves.getWorkers();
+      const tasks = await Saves.getTasks();
+      
+      const worker = workers.find(w => w.id === workerId);
+
+      if (!worker) {
+        document.getElementById('profileContent').innerHTML = '<h2>خطأ: العامل غير موجود.</h2>';
+        return;
+      }
+
+      // Find all tasks assigned to this worker
+      const myTasks = tasks.filter(t => {
+          const isInArray = t.workerIds && t.workerIds.includes(workerId);
+          const isOldFormat = t.workerId === workerId;
+          const isReviewer = t.reviewerId === workerId;
+          return isInArray || isOldFormat || isReviewer;
+      });
+
+      const todoTasks = myTasks.filter(t => t.status === 'pending');
+      const doneTasks = myTasks.filter(t => t.status === 'done');
+      const activeTasks = myTasks.filter(t => t.status !== 'pending' && t.status !== 'done');
+
+      // Render the clean profile view with updated titles
+      document.getElementById('profileContent').innerHTML = `
+        <div class="card" style="display: flex; align-items: center; gap: 20px; background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: white;">
+          <div style="width: 80px; height: 80px; background: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 40px; color: var(--primary);">
+            <i class="ph ph-user"></i>
+          </div>
+          <div>
+            <h1 style="margin: 0; color: white !important;">${worker.name}</h1>
+            <p style="margin: 5px 0 0 0; color: white !important; opacity: 0.9;">${worker.role || 'عامل'} | ${worker.phone || 'لا يوجد رقم'}</p>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 20px;">
+          <!-- Column 1: Pending -->
+          <div class="card">
+            <h3 style="color: var(--text-main); border-bottom: 2px solid var(--border); padding-bottom: 10px;">
+              <i class="ph ph-hourglass"></i> هام (${todoTasks.length})
+            </h3>
+            <ul style="list-style: none; padding: 0; margin-top: 15px;">
+              ${todoTasks.length === 0 ? '<li style="color: var(--text-muted);">لا يوجد</li>' : todoTasks.map(t => `<li style="padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px;">${t.title}</li>`).join('')}
+            </ul>
+          </div>
+
+          <!-- Column 2: Active -->
+          <div class="card">
+            <h3 style="color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 10px;">
+              <i class="ph ph-spinner"></i> جاري العمل (${activeTasks.length})
+            </h3>
+            <ul style="list-style: none; padding: 0; margin-top: 15px;">
+              ${activeTasks.length === 0 ? '<li style="color: var(--text-muted);">لا يوجد</li>' : activeTasks.map(t => `<li style="padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px;">${t.title}</li>`).join('')}
+            </ul>
+          </div>
+
+          <!-- Column 3: Done -->
+          <div class="card">
+            <h3 style="color: var(--success); border-bottom: 2px solid var(--success); padding-bottom: 10px;">
+              <i class="ph ph-check-circle"></i> تم الانتهاء (${doneTasks.length})
+            </h3>
+            <ul style="list-style: none; padding: 0; margin-top: 15px;">
+              ${doneTasks.length === 0 ? '<li style="color: var(--text-muted);">لا يوجد</li>' : doneTasks.map(t => `<li style="padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; text-decoration: line-through; color: var(--text-muted);">${t.title}</li>`).join('')}
+            </ul>
+          </div>
+        </div>
+      `;
+    }
+
+    document.addEventListener('DOMContentLoaded', loadProfile);
+  </script>
+</body>
+</html>
