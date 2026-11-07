@@ -17,6 +17,7 @@ If you discover any security vulnerabilities within this application, please do 
 
 Instead, please report it directly and privately to the system administrator:
 *   **Email:** hazemyt55@gmail.com
-*   **Contact:** Hazem
+*   **Contact:** +966 55 858 7455
+*   **Name:** Hazem Salama
 
 You can expect an update on your report within 48 hours. If the vulnerability is accepted, a patch will be released as soon as possible. If it is declined, you will be notified with the reason.
