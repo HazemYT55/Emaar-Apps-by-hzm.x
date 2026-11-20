@@ -3,9 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ملفي الشخصي - إعمار</title>
+  <title>الإعدادات - إعمار</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
+  <style>
+    .theme-btn { 
+      width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: all 0.2s; display: inline-block; 
+    }
+    .theme-btn:hover { transform: scale(1.1); }
+    .theme-btn.active { border-color: var(--text-main); transform: scale(1.15); box-shadow: 0 0 10px rgba(0,0,0,0.2); }
+    
+    .font-btn {
+      background: var(--bg) !important;
+      color: var(--text-main) !important;
+      padding: 10px 20px;
+      border: 1px solid var(--border) !important;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .font-btn:hover { border-color: var(--primary) !important; }
+    .font-btn.active {
+      background: var(--primary) !important;
+      color: white !important;
+      border-color: var(--primary) !important;
+    }
+  </style>
 </head>
 <body class="app-body" id="bodyRoot">
 
@@ -13,28 +37,78 @@
     <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار الخليج</div>
     <a href="worker_dashboard.html"><i class="ph ph-check-square-offset"></i> مهامي</a>
     <a href="worker_board.html"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
-    <a href="worker_profile.html" class="active"><i class="ph ph-user"></i> ملفي الشخصي</a>
-    <a href="#" onclick="handleLogout(event)" style="margin-top: auto; color: #ef4444; background: rgba(239, 68, 68, 0.1);"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
+    <a href="worker_chat.html" class="active"><i class="ph ph-chats"></i> محادثاتي</a>
+    <a href="worker_profile.html"><i class="ph ph-user"></i> ملفي الشخصي</a>
+    <a href="worker_settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
+    <a href="#" onclick="handleLogout(event)" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
   </div>
-
+  
   <div class="main-content">
-    <h1>ملفي الشخصي</h1>
-    <p class="subtitle">تحديث بياناتي الشخصية.</p>
+    <h1>الإعدادات</h1>
+    <p class="subtitle">تخصيص تجربة استخدام التطبيق وتحديث بياناتك.</p>
 
-    <div class="card" style="max-width: 600px;">
-      <div id="profileContent">
-        <p>جاري تحميل البيانات...</p>
+    <div class="card">
+      
+      <!-- 1. User Profile (Name & Phone) -->
+      <div class="settings-option" style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border);">
+        <div>
+          <div class="settings-title" style="font-weight: bold; font-size: 18px; color: var(--primary);">بيانات المستخدم (User Profile)</div>
+          <div class="settings-desc" style="font-size: 14px; margin-top: 4px;">تحديث اسمك ورقم هاتفك.</div>
+        </div>
+        <div class="row" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <input type="text" id="userNameInput" placeholder="الاسم الكامل" style="padding: 10px; border: 1px solid var(--border); border-radius: 4px; width: 180px; color: var(--text-main); background: var(--bg);">
+          <input type="text" id="userPhoneInput" placeholder="رقم الهاتف" style="padding: 10px; border: 1px solid var(--border); border-radius: 4px; width: 150px; color: var(--text-main); background: var(--bg);">
+          <button onclick="saveProfile()" style="background: var(--primary); color: white; padding: 10px 16px; border: none; border-radius: 4px; cursor: pointer;">حفظ</button>
+        </div>
       </div>
+
+      <!-- 2. Language -->
+      <div class="settings-option" style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border);">
+        <div>
+          <div class="settings-title" style="font-weight: bold; font-size: 18px; color: var(--primary);">لغة التطبيق (Language)</div>
+          <div class="settings-desc" style="font-size: 14px; margin-top: 4px;">اختر لغة واجهة المستخدم.</div>
+        </div>
+        <div class="row" style="display: flex; gap: 10px;">
+          <button onclick="setLanguage('ar')" id="btnLangAr" style="background: var(--primary); color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;">عربي</button>
+          <button onclick="setLanguage('en')" id="btnLangEn" style="background: var(--primary); color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;">English</button>
+        </div>
+      </div>
+
+      <!-- 3. Theme -->
+      <div class="settings-option" style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border);">
+        <div>
+          <div class="settings-title" style="font-weight: bold; font-size: 18px; color: var(--primary);">مظهر التطبيق (Theme)</div>
+          <div class="settings-desc" style="font-size: 14px; margin-top: 4px;">اختر الألوان المريحة لعينك.</div>
+        </div>
+        <div class="row" style="display: flex; gap: 15px;">
+          <div class="theme-btn" id="theme-blue" style="background: #0f4c81;" onclick="setTheme('theme-blue')" title="Emaar Blue"></div>
+          <div class="theme-btn" id="theme-dark" style="background: #1e293b;" onclick="setTheme('theme-dark')" title="Dark Mode"></div>
+          <div class="theme-btn" id="theme-gold" style="background: #fbbf24;" onclick="setTheme('theme-gold')" title="Desert Gold"></div>
+        </div>
+      </div>
+
+      <!-- 4. Font Size -->
+      <div class="settings-option" style="display: flex; justify-content: space-between; align-items: center; padding: 20px;">
+        <div>
+          <div class="settings-title" style="font-weight: bold; font-size: 18px; color: var(--primary);">حجم الخط (Font Size)</div>
+          <div class="settings-desc" style="font-size: 14px; margin-top: 4px;">تكبير أو تصغير النصوص.</div>
+        </div>
+        <div class="row" style="display: flex; gap: 10px;">
+          <button class="font-btn" id="font-small" onclick="setFontSize('14px')">صغير</button>
+          <button class="font-btn" id="font-normal" onclick="setFontSize('16px')">عادي</button>
+          <button class="font-btn" id="font-large" onclick="setFontSize('18px')">كبير</button>
+        </div>
+      </div>
+
     </div>
   </div>
 
   <script src="sounds.js"></script>
   <script src="settings.js"></script>
-  
   <script type="module">
     import { db, auth } from './firebase-config.js';
     import Saves from './saves.js';
-    import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     let currentUid = null;
@@ -46,72 +120,54 @@
       window.location.href = 'index.html';
     };
 
+    // Load User Data dynamically
     onAuthStateChanged(auth, async (user) => {
-      if (!user) { window.location.href = 'index.html'; return; }
-
+      if (!user) { 
+        window.location.href = 'index.html'; 
+        return; 
+      }
+      
+      currentUid = user.uid;
       const docRef = doc(db, "users", user.uid);
       const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
-        const userData = docSnap.data();
-        if (userData.role === 'عامل' && userData.workerId) {
-           currentUid = user.uid;
-           currentWorkerId = userData.workerId;
-           loadProfile();
-        } else {
-           window.location.href = 'index.html';
+        const data = docSnap.data();
+        currentWorkerId = data.workerId;
+        
+        // Fetch Worker info to populate the input fields
+        if (currentWorkerId) {
+            const workers = await Saves.getWorkers();
+            const worker = workers.find(w => w.id === currentWorkerId);
+            if (worker) {
+                if (worker.name) document.getElementById('userNameInput').value = worker.name;
+                if (worker.phone) document.getElementById('userPhoneInput').value = worker.phone;
+            }
         }
       }
     });
 
-    async function loadProfile() {
-      const workers = await Saves.getWorkers();
-      const worker = workers.find(w => w.id === currentWorkerId);
-
-      if (!worker) return;
-
-      document.getElementById('profileContent').innerHTML = `
-        <div style="text-align: center; margin-bottom: 30px;">
-            <div style="width: 100px; height: 100px; background: var(--primary); border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 15px auto;">
-                <i class="ph ph-user" style="font-size: 50px; color: white;"></i>
-            </div>
-            <h2 style="color: var(--primary);">${worker.name}</h2>
-            <p style="color: var(--text-muted);">${worker.role}</p>
-        </div>
-
-        <form onsubmit="saveProfile(event)">
-            <div class="form-group">
-                <label>الاسم الكامل</label>
-                <input type="text" id="profileName" value="${worker.name || ''}" required>
-            </div>
-            <div class="form-group">
-                <label>رقم الهاتف</label>
-                <input type="text" id="profilePhone" value="${worker.phone || ''}">
-            </div>
-            <button type="submit" style="width: 100%; justify-content: center; background: var(--primary); margin-top: 10px;">
-                <i class="ph ph-check"></i> حفظ التعديلات
-            </button>
-        </form>
-      `;
-    }
-
-    window.saveProfile = async function(e) {
-        e.preventDefault();
-        const newName = document.getElementById('profileName').value.trim();
-        const newPhone = document.getElementById('profilePhone').value.trim();
-
-        if (!newName) return alert('الاسم مطلوب.');
-
-        if (typeof Sounds !== 'undefined') Sounds.playSuccess();
-
+    // Save Profile (Updates both Workers collection and Users collection)
+    window.saveProfile = async function() {
+      if (!currentUid || !currentWorkerId) return alert('يجب تسجيل الدخول أولاً.');
+      
+      const newName = document.getElementById('userNameInput').value.trim();
+      const newPhone = document.getElementById('userPhoneInput').value.trim();
+      
+      if (!newName) return alert('الرجاء إدخال الاسم.');
+      
+      try {
         // Update Worker Document
         await Saves.updateWorker(currentWorkerId, { name: newName, phone: newPhone });
         
-        // Also update the User Document so the greeting shows the new name
-        await updateDoc(doc(db, 'users', currentUid), { name: newName });
-
+        // Update User Document (so the dashboard greeting updates)
+        await updateDoc(doc(db, "users", currentUid), { name: newName });
+        
+        if (typeof Sounds !== 'undefined') Sounds.playSuccess();
         alert('تم حفظ بياناتك بنجاح!');
-        loadProfile();
+      } catch (e) {
+        alert('حدث خطأ: ' + e.message);
+      }
     };
   </script>
 </body>

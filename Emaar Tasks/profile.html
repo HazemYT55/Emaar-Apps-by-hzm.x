@@ -3,114 +3,366 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ملف العامل - إعمار</title>
+  <title>ملف المهندس - إعمار</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
+  <style>
+    .profile-header { background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: white; padding: 40px; border-radius: 16px; display: flex; align-items: center; gap: 25px; margin-bottom: 30px; box-shadow: 0 10px 20px rgba(15, 76, 129, 0.2); }
+    .profile-avatar { width: 100px; height: 100px; background: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 50px; color: var(--primary); flex-shrink: 0; overflow: hidden; }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .admin-tool-box { background: #fffbeb; border: 2px solid var(--accent); border-radius: 12px; padding: 25px; margin-bottom: 30px; }
+    .task-list-card { background: var(--surface); border-radius: 12px; padding: 20px; border: 1px solid var(--border); height: 100%; }
+    .task-list-card h3 { border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; font-size: 18px; }
+    .task-list-card ul { list-style: none; padding: 0; margin: 0; }
+    .task-list-card li { padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .task-list-card li:last-child { border-bottom: none; }
+
+    /* Stats */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; text-align: center; }
+    .stat-card .stat-value { font-size: 28px; font-weight: 800; color: var(--primary); }
+    .stat-card .stat-label { font-size: 13px; color: var(--text-muted); margin-top: 5px; }
+    .stat-card.rate .stat-value { color: var(--success); }
+
+    /* Sections */
+    .profile-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; margin-bottom: 22px; }
+    .profile-section h2 { font-size: 20px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 2px solid var(--border); color: var(--primary); display: flex; align-items: center; gap: 8px; }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 15px; }
+    .info-item label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; }
+    .info-item .info-value { font-size: 15px; font-weight: 600; color: var(--text-main); }
+    .info-item input, .info-item select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--bg); color: var(--text-main); }
+    .info-item input:disabled, .info-item select:disabled { background: var(--bg); opacity: 0.7; cursor: not-allowed; }
+
+    /* Timeline events */
+    .event-list { position: relative; padding-right: 25px; }
+    .event-list::before { content: ''; position: absolute; right: 8px; top: 5px; bottom: 5px; width: 2px; background: var(--border); }
+    .event-item { position: relative; padding: 10px 0 18px 0; }
+    .event-item::before { content: ''; position: absolute; right: -25px; top: 14px; width: 14px; height: 14px; border-radius: 50%; background: var(--primary); border: 3px solid var(--surface); box-shadow: 0 0 0 2px var(--primary); }
+    .event-item .event-title { font-weight: 700; color: var(--text-main); font-size: 14px; }
+    .event-item .event-desc { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+    .event-item .event-meta { font-size: 11px; color: var(--text-muted); margin-top: 5px; opacity: 0.8; }
+
+    .empty-state { color: var(--text-muted); text-align: center; padding: 20px; font-size: 14px; }
+    .toast { position: fixed; bottom: 20px; left: 20px; background: var(--success); color: white; padding: 14px 22px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 1000; opacity: 0; transform: translateY(20px); transition: all 0.3s; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.error { background: var(--danger); }
+    @media (max-width: 768px) { .profile-header { flex-direction: column; text-align: center; padding: 25px; } }
+  </style>
 </head>
 <body class="app-body" id="bodyRoot">
 
   <div class="sidebar">
     <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار</div>
-    <a href="dashboard.html"><i class="ph ph-squares-four"></i> لوحة القيادة</a> <!-- CHANGED TO dashboard.html -->
+    <a href="dashboard.html"><i class="ph ph-squares-four"></i> لوحة القيادة</a>
     <a href="projects.html"><i class="ph ph-folder-open"></i> مجلد المشاريع</a>
     <a href="fill_info.html"><i class="ph ph-users"></i> الفريق والإعدادات</a>
-    <a href="board.html" class="active"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
+    <a href="board.html"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
     <a href="tasks.html"><i class="ph ph-list-dashes"></i> قائمة المهام</a>
-    <a href="report.html"><i class="ph ph-robot"></i> تقرير الذكاء الاصطناعي</a>
+    <a href="report.html"><i class="ph ph-robot"></i> تقرير المشاريع</a>
     <a href="settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
     <a href="#" onclick="handleLogout(event)" style="color: #ef4444;"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
   </div>
-  
+
   <div class="main-content">
-    <button onclick="window.location.href='fill_info.html'" style="background: var(--bg); color: var(--text-main); border: 1px solid var(--border); margin-bottom: 20px;"><i class="ph ph-arrow-right"></i> العودة للفريق</button>
-    
+    <button onclick="window.location.href='fill_info.html'" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+      <i class="ph ph-arrow-right"></i> العودة لقائمة الفريق
+    </button>
+
     <div id="profileContent">
-      <p>جاري تحميل البيانات...</p>
+      <div style="text-align: center; padding: 50px;">
+        <i class="ph ph-spinner-gap" style="font-size: 40px; color: var(--primary);"></i>
+        <p style="margin-top: 15px; color: var(--text-muted);">جاري تحميل ملف المهندس...</p>
+      </div>
     </div>
   </div>
 
+  <div id="toast" class="toast"></div>
+
   <script src="sounds.js"></script>
   <script src="settings.js"></script>
-  
+
   <script type="module">
+    import { db, auth } from './firebase-config.js';
     import Saves from './saves.js';
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    // ملاحظة: البريد الإداري الصحيح
+    const ADMIN_EMAILS = ["hazemyt55@gmail.com", "m.salama@emaar.gulf"];
+    let IS_ADMIN = false;
+    let CURRENT_UID = null;
+
+    window.handleLogout = async function (e) {
+      e.preventDefault();
+      await signOut(auth);
+      window.location.href = 'index.html';
+    };
+
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (isError ? ' error' : '');
+      setTimeout(() => { t.className = 'toast'; }, 3000);
+    }
+
+    function fmtDate(v) {
+      if (!v) return 'غير محدد';
+      try {
+        const d = v.toDate ? v.toDate() : (typeof v === 'number' ? new Date(v) : new Date(v));
+        if (isNaN(d.getTime())) return 'غير محدد';
+        return d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+      } catch { return 'غير محدد'; }
+    }
+    function fmtDateTime(v) {
+      if (!v) return '';
+      try {
+        const d = v.toDate ? v.toDate() : new Date(v);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      } catch { return ''; }
+    }
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function toDateInput(v) {
+      if (!v) return '';
+      try { const d = v.toDate ? v.toDate() : new Date(v); return isNaN(d.getTime()) ? '' : d.toISOString().slice(0,10); } catch { return ''; }
+    }
 
     async function loadProfile() {
       const urlParams = new URLSearchParams(window.location.search);
       const workerId = urlParams.get('id');
-
       if (!workerId) {
-        document.getElementById('profileContent').innerHTML = '<h2>خطأ: لم يتم تحديد العامل.</h2>';
+        document.getElementById('profileContent').innerHTML = '<h2 style="color: var(--danger);">خطأ: لم يتم تحديد المهندس.</h2>';
         return;
       }
 
-      const workers = await Saves.getWorkers();
-      const tasks = await Saves.getTasks();
-      
-      const worker = workers.find(w => w.id === workerId);
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) { window.location.href = 'index.html'; return; }
+        CURRENT_UID = user.uid;
+        IS_ADMIN = ADMIN_EMAILS.includes((user.email || '').toLowerCase());
 
-      if (!worker) {
-        document.getElementById('profileContent').innerHTML = '<h2>خطأ: العامل غير موجود.</h2>';
-        return;
-      }
+        try {
+          const workers = await Saves.getWorkers();
+          const tasks = await Saves.getTasks();
+          const worker = workers.find(w => w.id === workerId);
+          if (!worker) {
+            document.getElementById('profileContent').innerHTML = '<h2 style="color: var(--danger);">خطأ: المهندس غير موجود في قاعدة البيانات.</h2>';
+            return;
+          }
 
-      // Find all tasks assigned to this worker
-      const myTasks = tasks.filter(t => {
-          const isInArray = t.workerIds && t.workerIds.includes(workerId);
-          const isOldFormat = t.workerId === workerId;
-          const isReviewer = t.reviewerId === workerId;
-          return isInArray || isOldFormat || isReviewer;
+          // Tasks
+          const myTasks = tasks.filter(t => {
+            const isInArray = t.workerIds && t.workerIds.includes(workerId);
+            const isOldFormat = t.workerId === workerId;
+            const isReviewer = t.reviewerId === workerId;
+            return isInArray || isOldFormat || isReviewer;
+          });
+          const todoTasks = myTasks.filter(t => t.status === 'pending');
+          const activeTasks = myTasks.filter(t => t.status === 'in_progress' || t.status === 'review');
+          const doneTasks = myTasks.filter(t => t.status === 'done');
+          const total = myTasks.length;
+          const completionRate = total > 0 ? Math.round((doneTasks.length / total) * 100) : 0;
+
+          // Timeline
+          const events = await Saves.getWorkerTimeline(workerId, 50);
+
+          // Admin tool
+          let adminTool = '';
+          if (IS_ADMIN) {
+            adminTool = `
+              <div class="admin-tool-box">
+                <h3 style="color: #b45309; margin-bottom: 10px;"><i class="ph ph-link"></i> ربط حساب المستخدم (Admin Tool)</h3>
+                <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 15px;">
+                  اكتب البريد الإلكتروني لحساب المهندس لربطه بملفه. <strong>ملاحظة:</strong> يجب إنشاء الحساب أولاً من Firebase Authentication.
+                </p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                  <input type="email" id="linkEmailInput" placeholder="eng@emaar.gulf" style="flex:1; padding: 12px; border-radius: 8px; border: 1px solid var(--border); min-width: 250px;">
+                  <button onclick="linkAccount('${workerId}')" style="background: var(--accent); color: black; padding: 12px 24px; font-weight: bold; border-radius: 8px;">
+                    <i class="ph ph-link"></i> ربط الحساب
+                  </button>
+                </div>
+              </div>`;
+          }
+
+          // Admin fields disabled if not admin
+          const dis = IS_ADMIN ? '' : 'disabled';
+
+          document.getElementById('profileContent').innerHTML = `
+            <div class="profile-header">
+              <div class="profile-avatar">
+                ${worker.photoURL ? `<img src="${esc(worker.photoURL)}" alt="avatar" onerror="this.parentElement.innerHTML='<i class=\\'ph ph-user\\'></i>'">` : '<i class="ph ph-user"></i>'}
+              </div>
+              <div>
+                <h1 style="margin: 0; color: white !important; font-size: 30px;">${esc(worker.name || 'بدون اسم')}</h1>
+                <p style="margin: 8px 0 0 0; font-size: 16px; opacity: 0.9;">
+                  <i class="ph ph-briefcase"></i> ${esc(worker.role || 'مهندس')} &nbsp;|&nbsp;
+                  <i class="ph ph-phone"></i> ${esc(worker.phone || 'لا يوجد رقم')}
+                </p>
+              </div>
+            </div>
+
+            ${adminTool}
+
+            <!-- Stats -->
+            <div class="stats-grid">
+              <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">إجمالي المهام</div></div>
+              <div class="stat-card"><div class="stat-value" style="color: var(--success);">${doneTasks.length}</div><div class="stat-label">مهام مكتملة</div></div>
+              <div class="stat-card"><div class="stat-value" style="color: var(--primary);">${activeTasks.length}</div><div class="stat-label">مهام جارية</div></div>
+              <div class="stat-card"><div class="stat-value" style="color: var(--text-muted);">${todoTasks.length}</div><div class="stat-label">قيد الانتظار</div></div>
+              <div class="stat-card rate"><div class="stat-value">${completionRate}%</div><div class="stat-label">نسبة الإنجاز</div></div>
+            </div>
+
+            <!-- Personal Info -->
+            <div class="profile-section">
+              <h2><i class="ph ph-user-circle"></i> المعلومات الشخصية</h2>
+              <div class="info-grid">
+                <div class="info-item"><label>الاسم الكامل</label><div class="info-value">${esc(worker.name || 'غير محدد')}</div></div>
+                <div class="info-item"><label>الرقم الوظيفي</label><div class="info-value">${esc(worker.employeeId || 'غير محدد')}</div></div>
+                <div class="info-item"><label>رقم الهاتف</label><div class="info-value">${esc(worker.phone || 'غير محدد')}</div></div>
+                <div class="info-item"><label>البريد الإلكتروني</label><div class="info-value">${esc(worker.email || 'غير محدد')}</div></div>
+                <div class="info-item"><label>الجنسية</label><div class="info-value">${esc(worker.nationality || 'غير محدد')}</div></div>
+              </div>
+            </div>
+
+            <!-- Job Info -->
+            <div class="profile-section">
+              <h2><i class="ph ph-briefcase"></i> المعلومات الوظيفية</h2>
+              <div class="info-grid">
+                <div class="info-item"><label>المسمى الوظيفي</label><input id="jobTitle" value="${esc(worker.jobTitle || worker.role || '')}" ${dis}></div>
+                <div class="info-item"><label>التخصص الهندسي</label><input id="engineeringSpecialty" value="${esc(worker.engineeringSpecialty || '')}" ${dis}></div>
+                <div class="info-item"><label>القسم</label><input id="department" value="${esc(worker.department || '')}" ${dis}></div>
+                <div class="info-item"><label>سنوات الخبرة</label><input id="yearsOfExperience" type="number" min="0" value="${worker.yearsOfExperience ?? ''}" ${dis}></div>
+                <div class="info-item"><label>تاريخ التعيين</label><input id="hireDate" type="date" value="${toDateInput(worker.hireDate)}" ${dis}></div>
+                <div class="info-item"><label>المدير المباشر</label><input id="directManager" value="${esc(worker.directManager || '')}" ${dis}></div>
+              </div>
+            </div>
+
+            <!-- Work Info -->
+            <div class="profile-section">
+              <h2><i class="ph ph-buildings"></i> معلومات العمل</h2>
+              <div class="info-grid">
+                <div class="info-item"><label>موقع العمل الحالي</label><input id="currentWorkLocation" value="${esc(worker.currentWorkLocation || '')}" ${dis}></div>
+                <div class="info-item"><label>حالة العمل</label>
+                  <select id="workStatus" ${dis}>
+                    ${['active','on_leave','resigned','terminated'].map(s => `<option value="${s}" ${worker.workStatus===s?'selected':''}>${({active:'على رأس العمل',on_leave:'إجازة',resigned:'مستقيل',terminated:'منتهي'})[s]}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="info-item"><label>جدول العمل</label><input id="workSchedule" value="${esc(worker.workSchedule || '')}" ${dis}></div>
+                <div class="info-item" style="grid-column: 1 / -1;"><label>المسؤوليات الوظيفية</label><input id="responsibilities" value="${esc(worker.responsibilities || '')}" ${dis}></div>
+                <div class="info-item" style="grid-column: 1 / -1;"><label>المشاريع المسندة</label><div class="info-value">${Array.isArray(worker.assignedProjects) && worker.assignedProjects.length ? worker.assignedProjects.map(p => esc(p)).join('، ') : 'لا يوجد'}</div></div>
+              </div>
+              ${IS_ADMIN ? `<button onclick="saveJobInfo('${workerId}')" style="margin-top: 15px; background: var(--primary); color: white; padding: 12px 24px; border-radius: 8px; font-weight: bold;"><i class="ph ph-check"></i> حفظ التعديلات الإدارية</button>` : ''}
+            </div>
+
+            <!-- Timeline Dates -->
+            <div class="profile-section">
+              <h2><i class="ph ph-calendar"></i> السجل الزمني والوظيفي</h2>
+              <div class="info-grid">
+                <div class="info-item"><label>تاريخ الميلاد</label><input id="birthDate" type="date" value="${toDateInput(worker.birthDate)}" ${dis}></div>
+                <div class="info-item"><label>تاريخ التعيين</label><div class="info-value">${fmtDate(worker.hireDate)}</div></div>
+                <div class="info-item"><label>تاريخ بداية العقد</label><input id="contractStartDate" type="date" value="${toDateInput(worker.contractStartDate)}" ${dis}></div>
+                <div class="info-item"><label>تاريخ نهاية العقد</label><input id="contractEndDate" type="date" value="${toDateInput(worker.contractEndDate)}" ${dis}></div>
+                <div class="info-item"><label>تاريخ آخر ترقية</label><input id="lastPromotionDate" type="date" value="${toDateInput(worker.lastPromotionDate)}" ${dis}></div>
+                <div class="info-item"><label>تاريخ آخر تقييم</label><input id="lastEvaluationDate" type="date" value="${toDateInput(worker.lastEvaluationDate)}" ${dis}></div>
+                <div class="info-item"><label>آخر تحديث للملف</label><div class="info-value">${fmtDate(worker.profileUpdatedAt)}</div></div>
+                <div class="info-item"><label>آخر تسجيل دخول</label><div class="info-value">${fmtDate(worker.lastLoginAt)}</div></div>
+              </div>
+            </div>
+
+            <!-- History Events -->
+            <div class="profile-section">
+              <h2><i class="ph ph-clock-counter-clockwise"></i> السجل التاريخي للأحداث</h2>
+              ${events.length === 0
+                ? `<div class="empty-state"><i class="ph ph-clock"></i><br>لا توجد أحداث مسجلة بعد.</div>`
+                : `<div class="event-list">
+                    ${events.map(ev => `
+                      <div class="event-item">
+                        <div class="event-title">${esc(ev.title || ev.eventType || 'حدث')}</div>
+                        ${ev.description ? `<div class="event-desc">${esc(ev.description)}</div>` : ''}
+                        <div class="event-meta">
+                          <i class="ph ph-calendar-blank"></i> ${fmtDateTime(ev.timestamp)}
+                          ${ev.performedBy ? ` &nbsp;•&nbsp; <i class="ph ph-user"></i> ${esc(ev.performedBy)}` : ''}
+                        </div>
+                      </div>`).join('')}
+                  </div>`}
+            </div>
+
+            <!-- Tasks -->
+            <div class="grid-3">
+              <div class="task-list-card" style="border-top: 4px solid var(--text-muted);">
+                <h3><i class="ph ph-hourglass"></i> قيد الانتظار (${todoTasks.length})</h3>
+                <ul>${todoTasks.length === 0 ? '<li style="color: var(--text-muted);">لا يوجد مهام</li>' : todoTasks.map(t => `<li><span>${esc(t.title)}</span></li>`).join('')}</ul>
+              </div>
+              <div class="task-list-card" style="border-top: 4px solid var(--primary);">
+                <h3><i class="ph ph-spinner"></i> جاري العمل (${activeTasks.length})</h3>
+                <ul>${activeTasks.length === 0 ? '<li style="color: var(--text-muted);">لا يوجد مهام</li>' : activeTasks.map(t => `<li><span>${esc(t.title)}</span></li>`).join('')}</ul>
+              </div>
+              <div class="task-list-card" style="border-top: 4px solid var(--success);">
+                <h3><i class="ph ph-check-circle"></i> مكتملة (${doneTasks.length})</h3>
+                <ul>${doneTasks.length === 0 ? '<li style="color: var(--text-muted);">لا يوجد مهام</li>' : doneTasks.map(t => `<li><span style="text-decoration: line-through; color: var(--text-muted);">${esc(t.title)}</span></li>`).join('')}</ul>
+              </div>
+            </div>
+          `;
+        } catch (error) {
+          console.error(error);
+          document.getElementById('profileContent').innerHTML = `<p style="color: var(--danger);">حدث خطأ: ${esc(error.message)}</p>`;
+        }
       });
-
-      const todoTasks = myTasks.filter(t => t.status === 'pending');
-      const doneTasks = myTasks.filter(t => t.status === 'done');
-      const activeTasks = myTasks.filter(t => t.status !== 'pending' && t.status !== 'done');
-
-      // Render the clean profile view with updated titles
-      document.getElementById('profileContent').innerHTML = `
-        <div class="card" style="display: flex; align-items: center; gap: 20px; background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: white;">
-          <div style="width: 80px; height: 80px; background: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 40px; color: var(--primary);">
-            <i class="ph ph-user"></i>
-          </div>
-          <div>
-            <h1 style="margin: 0; color: white !important;">${worker.name}</h1>
-            <p style="margin: 5px 0 0 0; color: white !important; opacity: 0.9;">${worker.role || 'عامل'} | ${worker.phone || 'لا يوجد رقم'}</p>
-          </div>
-        </div>
-
-        <div class="grid-3" style="margin-top: 20px;">
-          <!-- Column 1: Pending -->
-          <div class="card">
-            <h3 style="color: var(--text-main); border-bottom: 2px solid var(--border); padding-bottom: 10px;">
-              <i class="ph ph-hourglass"></i> هام (${todoTasks.length})
-            </h3>
-            <ul style="list-style: none; padding: 0; margin-top: 15px;">
-              ${todoTasks.length === 0 ? '<li style="color: var(--text-muted);">لا يوجد</li>' : todoTasks.map(t => `<li style="padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px;">${t.title}</li>`).join('')}
-            </ul>
-          </div>
-
-          <!-- Column 2: Active -->
-          <div class="card">
-            <h3 style="color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 10px;">
-              <i class="ph ph-spinner"></i> جاري العمل (${activeTasks.length})
-            </h3>
-            <ul style="list-style: none; padding: 0; margin-top: 15px;">
-              ${activeTasks.length === 0 ? '<li style="color: var(--text-muted);">لا يوجد</li>' : activeTasks.map(t => `<li style="padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px;">${t.title}</li>`).join('')}
-            </ul>
-          </div>
-
-          <!-- Column 3: Done -->
-          <div class="card">
-            <h3 style="color: var(--success); border-bottom: 2px solid var(--success); padding-bottom: 10px;">
-              <i class="ph ph-check-circle"></i> تم الانتهاء (${doneTasks.length})
-            </h3>
-            <ul style="list-style: none; padding: 0; margin-top: 15px;">
-              ${doneTasks.length === 0 ? '<li style="color: var(--text-muted);">لا يوجد</li>' : doneTasks.map(t => `<li style="padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; text-decoration: line-through; color: var(--text-muted);">${t.title}</li>`).join('')}
-            </ul>
-          </div>
-        </div>
-      `;
     }
+
+    // حفظ الحقول الإدارية
+    window.saveJobInfo = async function (workerId) {
+      if (!IS_ADMIN) return showToast('غير مصرح', true);
+      const val = id => document.getElementById(id)?.value.trim();
+      const dateVal = id => {
+        const v = val(id); if (!v) return null;
+        try { return new Date(v + 'T00:00:00'); } catch { return null; }
+      };
+      const patch = {
+        jobTitle: val('jobTitle') || '',
+        engineeringSpecialty: val('engineeringSpecialty') || '',
+        department: val('department') || '',
+        yearsOfExperience: val('yearsOfExperience') ? Number(val('yearsOfExperience')) : null,
+        hireDate: dateVal('hireDate'),
+        directManager: val('directManager') || '',
+        currentWorkLocation: val('currentWorkLocation') || '',
+        workStatus: val('workStatus') || 'active',
+        workSchedule: val('workSchedule') || '',
+        responsibilities: val('responsibilities') || '',
+        birthDate: dateVal('birthDate'),
+        contractStartDate: dateVal('contractStartDate'),
+        contractEndDate: dateVal('contractEndDate'),
+        lastPromotionDate: dateVal('lastPromotionDate'),
+        lastEvaluationDate: dateVal('lastEvaluationDate'),
+      };
+      // إزالة القيم الفارغة null حتى لا تمسح البيانات القديمة
+      Object.keys(patch).forEach(k => patch[k] === null && delete patch[k]);
+
+      try {
+        await Saves.updateWorkerWithLog(workerId, patch, auth.currentUser.email, {
+          description: 'تحديث بيانات الملف من قبل الإدارة'
+        });
+        showToast('تم حفظ البيانات بنجاح');
+        if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+        setTimeout(() => loadProfile(), 800);
+      } catch (e) {
+        showToast('فشل الحفظ: ' + e.message, true);
+      }
+    };
+
+    window.linkAccount = async function (workerId) {
+      if (!IS_ADMIN) return showToast('غير مصرح', true);
+      const email = document.getElementById('linkEmailInput').value.trim();
+      if (!email) return alert('الرجاء إدخال البريد الإلكتروني.');
+      try {
+        await Saves.linkUserToWorker(email, workerId);
+        alert('تم ربط الحساب بنجاح!');
+        if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+      } catch (error) {
+        alert("حدث خطأ: " + error.message);
+      }
+    };
 
     document.addEventListener('DOMContentLoaded', loadProfile);
   </script>

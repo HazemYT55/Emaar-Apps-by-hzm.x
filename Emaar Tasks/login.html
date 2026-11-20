@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تسجيل الدخول - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web/src/regular/style.css">
+
+  <style>
+    * { box-sizing: border-box; font-family: 'Cairo', sans-serif; margin: 0; padding: 0; }
+    body { background: url('assets/bg-login.webp') center/cover no-repeat; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .login-card { background: rgba(255, 255, 255, 0.95); border-radius: 16px; width: 100%; max-width: 420px; padding: 40px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+    .header { text-align: center; margin-bottom: 24px; }
+    .header img { height: 60px; border-radius: 10px; margin-bottom: 15px; }
+    .header h1 { color: #0f4c81; font-size: 28px; margin-bottom: 8px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #64748b; }
+    input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+    .auth-btn { width: 100%; background: #0f4c81; color: white; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
+    .auth-btn:hover { background: #0a365d; }
+    .auth-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+    .error-box { background: #fee2e2; color: #b91c1c; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; display: none; border: 1px solid #fecaca; }
+    .toggle-auth { text-align: center; margin-top: 15px; }
+    .toggle-auth a { color: #0f4c81; font-size: 14px; text-decoration: underline; cursor: pointer; }
+    .loader { display: none; margin-top: 15px; text-align: center; color: #0f4c81; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <div class="login-card">
+    <div class="header">
+      <img src="assets/logo.jpg" alt="Logo" onerror="this.style.display='none'">
+      <h1>إعمار للمهام</h1>
+      <p style="color: #64748b; font-size: 14px;">مرحباً بك، يرجى تسجيل الدخول.</p>
+    </div>
+
+    <div id="errorBox" class="error-box"></div>
+
+    <div class="form-group">
+      <label>البريد الإلكتروني</label>
+      <input type="email" id="loginEmail" placeholder="yourname@example.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>كلمة المرور</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+
+    <button id="authBtn" class="auth-btn" onclick="handleAuth()">تسجيل الدخول</button>
+    <div class="loader" id="loader"><i class="ph ph-spinner-gap"></i> جاري تسجيل الدخول...</div>
+    <div class="toggle-auth"><a onclick="alert('يجب على المدير إنشاء حسابك أولاً. تواصل معه.')">ليس لديك حساب؟</a></div>
+  </div>
+
+  <script src="sounds.js"></script>
+  <script type="module">
+    import { auth, db } from './firebase-config.js';
+    import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const ADMIN_EMAILS = ["hazemyt55@gmail.com", "m.salama@emaargulf.com"];
+
+    function showError(msg) {
+      const box = document.getElementById('errorBox');
+      box.textContent = msg;
+      box.style.display = 'block';
+    }
+
+    window.handleAuth = async function() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+      const btn = document.getElementById('authBtn');
+      const loader = document.getElementById('loader');
+
+      document.getElementById('errorBox').style.display = 'none';
+
+      if (!email || !password) {
+        showError('الرجاء إدخال البريد الإلكتروني وكلمة المرور.');
+        return;
+      }
+
+      btn.disabled = true;
+      loader.style.display = 'block';
+
+      try {
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        const user = cred.user;
+
+        // Admin redirect
+        if (ADMIN_EMAILS.includes(user.email)) {
+          window.location.href = 'dashboard.html';
+          return;
+        }
+
+        // Worker: verify they have a workerId before redirecting
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+
+        if (!userDoc.exists()) {
+          // Don't sign out — let them see the "not linked" page which has a logout button
+          window.location.href = 'worker_dashboard.html';
+          return;
+        }
+
+        const data = userDoc.data();
+        if (!data.workerId) {
+          // Redirect anyway — worker_dashboard.html will show the "not linked" message
+          window.location.href = 'worker_dashboard.html';
+          return;
+        }
+
+        window.location.href = 'worker_dashboard.html';
+
+      } catch (error) {
+        console.error("Login error:", error);
+        let msg = 'خطأ في تسجيل الدخول.';
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+          msg = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+        } else if (error.code === 'auth/too-many-requests') {
+          msg = 'محاولات كثيرة. يرجى المحاولة لاحقاً.';
+        } else if (error.code === 'auth/invalid-email') {
+          msg = 'البريد الإلكتروني غير صالح.';
+        } else {
+          msg = 'خطأ: ' + error.message;
+        }
+        showError(msg);
+        btn.disabled = false;
+        loader.style.display = 'none';
+      }
+    };
+
+    // Allow Enter key
+    document.getElementById('loginPassword').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleAuth();
+    });
+  </script>
+</body>
+</html>

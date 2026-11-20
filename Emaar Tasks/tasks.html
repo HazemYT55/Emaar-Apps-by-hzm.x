@@ -23,6 +23,22 @@
       transition: background 0.2s; border: 1px solid #bae6fd; margin-top: 10px;
     }
     .map-btn:hover { background: #bae6fd; }
+
+    .clear-btn {
+      background: #eff6ff !important; color: #2563eb !important; border: 1px solid #bfdbfe !important; 
+      padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; margin-top: 10px;
+    }
+    .clear-btn:hover { background: #dbeafe !important; border-color: #93c5fd !important; }
+
+    .file-preview {
+      display: flex; align-items: center; gap: 10px; padding: 10px; 
+      background: var(--bg); border: 1px dashed var(--border); border-radius: 8px;
+      margin-top: 10px; font-size: 13px; font-weight: bold; color: var(--primary);
+    }
+    .file-preview img {
+      max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 4px;
+    }
   </style>
 </head>
 <body class="app-body" id="bodyRoot">
@@ -48,7 +64,10 @@
           <button type="button" onclick="addWorkerToEditChain()" style="background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer;"><i class="ph ph-plus"></i> إضافة</button>
         </div>
         <div id="editWorkersChainList" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; min-height: 40px;"></div>
-        <button type="button" onclick="clearEditWorkersChain()" style="background: transparent; color: var(--danger); border: none; font-size: 12px; margin-top: 10px; cursor: pointer;"><i class="ph ph-trash"></i> مسح القائمة</button>
+        
+        <button type="button" onclick="clearEditWorkersChain()" class="clear-btn">
+          <i class="ph ph-trash" style="color: #dc2626;"></i> مسح القائمة
+        </button>
       </div>
 
       <div class="grid-2">
@@ -61,6 +80,26 @@
         <input type="url" id="editMapLink" placeholder="https://maps.google.com/...">
       </div>
 
+      <!-- Image/File Update Section -->
+      <div class="form-group" style="background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 20px;">
+        <label style="margin-bottom: 10px;"><i class="ph ph-paperclip"></i> مرفق المهمة (Task Attachment)</label>
+        
+        <div id="currentFileContainer" style="display: none;">
+          <div id="currentFilePreview" class="file-preview"></div>
+          <button type="button" onclick="removeEditFile()" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-bottom: 15px; display: inline-flex; align-items: center; gap: 5px;">
+            <i class="ph ph-trash"></i> إزالة المرفق الحالي
+          </button>
+        </div>
+        
+        <div id="noFileContainer" style="color: var(--text-muted); font-size: 13px; margin-bottom: 15px;">
+          لا يوجد مرفق حالياً.
+        </div>
+
+        <!-- Changed accept to "*" to allow ANY file format -->
+        <input type="file" id="editTaskFile" accept="*" style="padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; width: 100%;">
+        <small style="color: var(--text-muted); font-size: 11px; margin-top: 5px; display: block;">يمكنك رفع أي صيغة (PDF, DWG, DXF, PSD, ZIP).</small>
+      </div>
+
       <div style="display: flex; gap: 10px; margin-top: 20px;">
         <button onclick="saveEditTask()" style="flex: 1; justify-content: center; background: var(--primary);"><i class="ph ph-check"></i> حفظ التعديلات</button>
         <button onclick="closeEditModal()" style="flex: 1; justify-content: center; background: var(--text-muted);"><i class="ph ph-x"></i> إلغاء</button>
@@ -69,13 +108,14 @@
   </div>
 
   <div class="sidebar">
-    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار</div>
+    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار الخليج</div>
     <a href="dashboard.html"><i class="ph ph-squares-four"></i> لوحة القيادة</a>
     <a href="projects.html"><i class="ph ph-folder-open"></i> مجلد المشاريع</a>
     <a href="fill_info.html"><i class="ph ph-users"></i> الفريق والإعدادات</a>
     <a href="board.html"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
-    <a href="tasks.html" class="active"><i class="ph ph-list-dashes"></i> قائمة المهام</a>
-    <a href="report.html"><i class="ph ph-robot"></i> تقرير الذكاء الاصطناعي</a>
+    <a href="tasks.html"><i class="ph ph-list-dashes"></i> قائمة المهام</a>
+    <a href="report.html"><i class="ph ph-robot"></i> تقرير المشاريع</a>
+	<a href="chat.html"><i class="ph ph-chats"></i> المحادثات</a>
     <a href="settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
     <a href="#" onclick="handleLogout(event)" style="color: #ef4444;"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
   </div>
@@ -105,7 +145,10 @@
           <div id="workersChainList" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; min-height: 40px;">
             <span style="color: var(--text-muted); font-size: 13px;">لم يتم اختيار مهندسين بعد.</span>
           </div>
-          <button type="button" onclick="clearWorkersChain()" style="background: transparent; color: var(--danger); border: none; font-size: 12px; margin-top: 10px; cursor: pointer;"><i class="ph ph-trash"></i> مسح القائمة</button>
+          
+          <button type="button" onclick="clearWorkersChain()" class="clear-btn">
+            <i class="ph ph-trash" style="color: #dc2626;"></i> مسح القائمة
+          </button>
         </div>
 
         <div class="grid-2">
@@ -118,7 +161,8 @@
             <div class="form-group"><label>رابط الخريطة (Google Maps)</label><input type="url" id="taskMapLink" placeholder="https://maps.google.com/..."></div>
         </div>
 
-        <div class="form-group"><label>رفع صورة (اختياري)</label><input type="file" id="taskImage" accept="image/*"></div>
+        <!-- Changed accept to "*" to allow ANY file format -->
+        <div class="form-group"><label>رفع مرفق (اختياري)</label><input type="file" id="taskFile" accept="*"></div>
         
         <button onclick="createTask()" style="width: 100%; justify-content: center; margin-top: 10px;"><i class="ph ph-paper-plane-right"></i> تعيين المهمة</button>
       </div>
@@ -147,6 +191,10 @@
     let allWorkers = [];
     let selectedWorkerIds = [];
     let editingWorkerIds = [];
+    
+    // Track file data
+    let editTaskCurrentFileName = null;
+    let editTaskCurrentFileBase64 = null;
 
     window.handleLogout = async function(e) {
       e.preventDefault();
@@ -195,27 +243,39 @@
       renderTasks(allTasks);
     }
 
-    window.addWorkerToChain = function() {
-      const workerId = document.getElementById('workerDropdown').value;
-      if (!workerId) return alert('الرجاء اختيار مهندس أولاً.');
-      if (selectedWorkerIds.includes(workerId)) return alert('هذا المهندس موجود بالفعل.');
-      selectedWorkerIds.push(workerId);
-      document.getElementById('workerDropdown').value = ''; 
-      renderWorkersChain();
-    };
-    window.clearWorkersChain = function() { selectedWorkerIds = []; renderWorkersChain(); };
-    
-    function renderWorkersChain() {
-      const container = document.getElementById('workersChainList');
-      if (selectedWorkerIds.length === 0) {
-        container.innerHTML = '<span style="color: var(--text-muted); font-size: 13px;">لم يتم اختيار مهندسين بعد.</span>';
-        return;
-      }
-      container.innerHTML = selectedWorkerIds.map((id, index) => {
-        const worker = allWorkers.find(w => w.id === id);
-        const isLast = index === selectedWorkerIds.length - 1;
-        return `<span style="background: var(--primary); color: white; padding: 5px 12px; border-radius: 20px; font-size: 13px;">${worker.name}</span>${!isLast ? '<i class="ph ph-arrow-left" style="color: var(--text-muted);"></i>' : ''}`;
-      }).join('');
+    // Process File Function (Warning for Large Files)
+    function processFile(file, callback) {
+        if (!file) return callback(null, null);
+        
+        // Firebase Firestore Document limit is 1MB. We limit to 800KB for safety.
+        if (file.size > 800 * 1024) {
+            alert(`⚠️ الملف كبير جداً (${(file.size/1024/1024).toFixed(2)} MB).\nالحد الأقصى لقاعدة البيانات هو 800KB. يرجى ضغط الملف أو رفعه على Google Drive وإرفاق الرابط.`);
+            return callback(null, null);
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // If it's an image, compress it slightly
+            if (file.type.startsWith('image/')) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    const scaleSize = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scaleSize;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+                    callback(compressedBase64, file.name);
+                };
+                img.src = e.target.result;
+            } else {
+                // Non-image file (PDF, DWG, etc), just read as DataURL
+                callback(e.target.result, file.name);
+            }
+        };
+        reader.readAsDataURL(file);
     }
 
     window.createTask = function() {
@@ -226,38 +286,17 @@
       const location = document.getElementById('taskLocation').value.trim();
       const mapLink = document.getElementById('taskMapLink').value.trim();
       const dueDate = document.getElementById('taskDueDate').value;
-      const imageFile = document.getElementById('taskImage').files[0];
+      const fileToUpload = document.getElementById('taskFile').files[0];
 
       if (selectedWorkerIds.length === 0) return alert('الرجاء إضافة مهندس واحد على الأقل للتسلسل.');
       if (!title) return alert('عنوان المهمة مطلوب.');
 
-      if (imageFile) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const img = new Image();
-          img.onload = function() {
-            const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 800;
-            const scaleSize = MAX_WIDTH / img.width;
-            canvas.width = MAX_WIDTH;
-            canvas.height = img.height * scaleSize;
-            
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            
-            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
-            
-            saveTaskToDB(reviewerId, projectId, title, description, location, mapLink, dueDate, compressedBase64);
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(imageFile);
-      } else {
-        saveTaskToDB(reviewerId, projectId, title, description, location, mapLink, dueDate, null);
-      }
+      processFile(fileToUpload, function(base64Data, fileName) {
+          saveTaskToDB(reviewerId, projectId, title, description, location, mapLink, dueDate, base64Data, fileName);
+      });
     };
 
-    async function saveTaskToDB(reviewerId, projectId, title, description, location, mapLink, dueDate, imageBase64) {
+    async function saveTaskToDB(reviewerId, projectId, title, description, location, mapLink, dueDate, base64Data, fileName) {
       if (typeof Sounds !== 'undefined') Sounds.playSuccess();
 
       await Saves.addTask({
@@ -269,7 +308,8 @@
         location, 
         mapLink, 
         dueDate, 
-        image: imageBase64, 
+        image: base64Data, 
+        fileName: fileName, // Store the file name
         status: 'pending', 
         createdAt: Date.now()
       });
@@ -279,7 +319,7 @@
       document.getElementById('taskLocation').value = '';
       document.getElementById('taskMapLink').value = '';
       document.getElementById('taskDueDate').value = '';
-      document.getElementById('taskImage').value = '';
+      document.getElementById('taskFile').value = '';
       clearWorkersChain(); 
 
       allTasks = await Saves.getTasks();
@@ -299,11 +339,46 @@
       const editProjectSelect = document.getElementById('editTaskProject');
       if (editProjectSelect) editProjectSelect.value = task.projectId || "";
 
+      // Handle File Preview in Edit Modal
+      editTaskCurrentFileBase64 = task.image || null; 
+      editTaskCurrentFileName = task.fileName || (task.image ? 'مرفق قديم' : null);
+      
+      document.getElementById('editTaskFile').value = ''; // reset file input
+      
+      const filePreview = document.getElementById('currentFilePreview');
+      const fileContainer = document.getElementById('currentFileContainer');
+      const noFileContainer = document.getElementById('noFileContainer');
+
+      if (editTaskCurrentFileBase64) {
+          // Check if it's an image
+          if (editTaskCurrentFileBase64.startsWith('data:image/')) {
+              filePreview.innerHTML = `<img src="${editTaskCurrentFileBase64}"> <span>${editTaskCurrentFileName}</span>`;
+          } else {
+              // It's a generic file (PDF, ZIP, etc)
+              filePreview.innerHTML = `<i class="ph ph-file" style="font-size: 32px;"></i> <span>${editTaskCurrentFileName}</span>`;
+          }
+          fileContainer.style.display = 'block';
+          noFileContainer.style.display = 'none';
+      } else {
+          fileContainer.style.display = 'none';
+          noFileContainer.style.display = 'block';
+      }
+
       editingWorkerIds = task.workerIds ? [...task.workerIds] : [];
       renderEditWorkersChain();
       document.getElementById('editModal').style.display = 'flex';
     };
+    
     window.closeEditModal = function() { document.getElementById('editModal').style.display = 'none'; };
+    
+    window.removeEditFile = function() {
+        editTaskCurrentFileBase64 = null;
+        editTaskCurrentFileName = null;
+        document.getElementById('currentFileContainer').style.display = 'none';
+        document.getElementById('noFileContainer').style.display = 'block';
+        document.getElementById('editTaskFile').value = ''; 
+    };
+
     window.addWorkerToEditChain = function() {
       const workerId = document.getElementById('editWorkerDropdown').value;
       if (!workerId) return;
@@ -312,6 +387,7 @@
       renderEditWorkersChain();
     };
     window.clearEditWorkersChain = function() { editingWorkerIds = []; renderEditWorkersChain(); };
+    
     function renderEditWorkersChain() {
       const container = document.getElementById('editWorkersChainList');
       if (editingWorkerIds.length === 0) {
@@ -324,6 +400,7 @@
         return `<span style="background: var(--primary); color: white; padding: 5px 12px; border-radius: 20px; font-size: 13px;">${worker ? worker.name : 'غير معروف'}</span>${!isLast ? '<i class="ph ph-arrow-left" style="color: var(--text-muted);"></i>' : ''}`;
       }).join('');
     }
+
     window.saveEditTask = async function() {
       const taskId = document.getElementById('editTaskId').value;
       const title = document.getElementById('editTitle').value.trim();
@@ -332,18 +409,39 @@
       const mapLink = document.getElementById('editMapLink').value.trim();
       const dueDate = document.getElementById('editDate').value;
       const projectId = document.getElementById('editTaskProject').value;
+      const newFile = document.getElementById('editTaskFile').files[0];
 
       if (!title) return alert('عنوان المهمة مطلوب.');
       if (editingWorkerIds.length === 0) return alert('يجب أن تحتوي المهمة على مهندس واحد على الأقل.');
 
+      if (newFile) {
+          processFile(newFile, async function(newBase64, newFileName) {
+              if (newBase64) {
+                  await finalizeEditSave(taskId, title, description, location, mapLink, dueDate, projectId, newBase64, newFileName);
+              }
+          });
+      } else {
+          await finalizeEditSave(taskId, title, description, location, mapLink, dueDate, projectId, editTaskCurrentFileBase64, editTaskCurrentFileName);
+      }
+    };
+
+    async function finalizeEditSave(taskId, title, description, location, mapLink, dueDate, projectId, base64Data, fileName) {
       await Saves.updateTask(taskId, { 
-          title, description, location, mapLink, dueDate, workerIds: editingWorkerIds, projectId: projectId || null 
+          title, 
+          description, 
+          location, 
+          mapLink, 
+          dueDate, 
+          workerIds: editingWorkerIds, 
+          projectId: projectId || null,
+          image: base64Data,
+          fileName: fileName
       });
       closeEditModal();
       allTasks = await Saves.getTasks();
       renderTasks(allTasks);
       if (typeof Sounds !== 'undefined') Sounds.playSuccess();
-    };
+    }
 
     function renderTasks(tasksToRender) {
       const list = document.getElementById('taskList');
@@ -385,6 +483,21 @@
             </a>
         ` : '';
 
+        // Render attachment (Image or File)
+        let attachmentHtml = '';
+        if (t.image) {
+            if (t.image.startsWith('data:image/')) {
+                attachmentHtml = `<img src="${t.image}" style="width: 100%; max-height: 200px; object-fit: contain; background: #000; border-radius: 6px; margin-top: 10px;">`;
+            } else {
+                // It's a file link (PDF, DWG, etc)
+                attachmentHtml = `
+                  <a href="${t.image}" download="${t.fileName || 'attachment'}" style="display: inline-flex; align-items: center; gap: 8px; background: var(--surface); padding: 10px; border-radius: 6px; border: 1px solid var(--border); text-decoration: none; color: var(--primary); font-weight: bold; margin-top: 10px; width: 100%;">
+                    <i class="ph ph-file-arrow-down" style="font-size: 20px;"></i> تحميل المرفق: ${t.fileName || 'ملف'}
+                  </a>
+                `;
+            }
+        }
+
         return `
           <div class="task-item" style="border-left: 4px solid var(--primary); padding: 16px; background: var(--bg); border-radius: 8px; margin-bottom: 12px;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -398,7 +511,7 @@
             </div>
             ${t.description ? `<p style="font-size: 13px; margin: 10px 0;">${t.description}</p>` : ''}
             
-            ${t.image ? `<img src="${t.image}" style="width: 100%; max-height: 200px; object-fit: cover; border-radius: 6px; margin-top: 10px;">` : ''}
+            ${attachmentHtml}
 
             <div style="background: var(--surface); padding: 10px; border-radius: 6px; margin: 10px 0; font-size: 13px; border: 1px solid var(--border); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <i class="ph ph-users" style="color: var(--primary);"></i> <strong>التسلسل:</strong> ${chainDisplay}

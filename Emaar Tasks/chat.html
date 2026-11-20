@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>المحادثات - إعمار</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    :root { --wa-bg: #efeae2; --wa-sent: #d9fdd3; --wa-received: #ffffff; --wa-header: #f0f2f5; --wa-sidebar-hover: #f5f6f6; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+    
+    .chat-container { display: flex; height: calc(100vh - 120px); background: var(--surface); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    .chat-sidebar { width: 340px; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    .chat-sidebar-header { padding: 15px 20px; border-bottom: 1px solid var(--border); background: var(--wa-header); font-weight: bold; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
+    .room-list { flex: 1; overflow-y: auto; background: var(--surface); }
+    
+    .room-item { padding: 15px 20px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; }
+    .room-item:hover, .room-item.active { background: var(--wa-sidebar-hover); border-right: 4px solid var(--primary); }
+    .room-item-info { display: flex; flex-direction: column; gap: 4px; flex: 1; overflow: hidden; }
+    .room-item strong { color: var(--text-main); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .room-item small { color: var(--text-muted); font-size: 13px; }
+    
+    .sidebar-delete-btn { background: #fee2e2; border: 1px solid #fca5a5; color: #dc2626; width: 32px; height: 32px; border-radius: 6px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s; margin-left: 10px; flex-shrink: 0; }
+    .sidebar-delete-btn:hover { background: #fca5a5; transform: scale(1.1); }
+
+    .chat-main { flex: 1; display: flex; flex-direction: column; background: var(--wa-bg); position: relative; width: 100%; }
+    .chat-header { padding: 15px 20px; border-bottom: 1px solid var(--border); background: var(--wa-header); font-weight: bold; color: var(--primary); display: flex; align-items: center; gap: 15px; }
+    .back-btn { display: none; background: transparent; border: none; color: var(--primary); font-size: 24px; cursor: pointer; padding: 0; }
+    .chat-header-info { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+    .chat-header-title { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-header-participants { font-size: 12px; color: var(--text-muted); font-weight: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    
+    .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-size: cover; background-color: var(--wa-bg); }
+    
+    .message-wrapper { display: flex; align-items: center; gap: 8px; max-width: 85%; position: relative; }
+    .message-wrapper.sent { align-self: flex-end; flex-direction: row-reverse; }
+    .message-wrapper.received { align-self: flex-start; }
+
+    .message { padding: 10px 14px; border-radius: 8px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 14px; line-height: 1.5; flex: 1; word-wrap: break-word; }
+    .message.sent { background: var(--wa-sent); color: #111; border-top-left-radius: 0; }
+    .message.received { background: var(--wa-received); color: #111; border-top-right-radius: 0; }
+    
+    .message-meta { font-size: 11px; margin-bottom: 4px; color: #667781; display: block; font-weight: bold; }
+    .message-time { font-size: 10px; color: #667781; float: left; margin-top: 5px; margin-left: 10px; }
+    
+    .delete-msg-btn { background: #fee2e2; border: 1px solid #fca5a5; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #dc2626; cursor: pointer; transition: all 0.2s; font-size: 14px; flex-shrink: 0; }
+    .delete-msg-btn:hover { background: #fca5a5; transform: scale(1.1); }
+    
+    .chat-input-area { padding: 10px 15px; background: var(--wa-header); display: flex; gap: 10px; align-items: center; }
+    .chat-input-area input { flex: 1; padding: 12px 15px; border: none; border-radius: 24px; outline: none; font-size: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); min-width: 0; }
+    .chat-input-area button { border-radius: 50%; width: 45px; height: 45px; display: flex; justify-content: center; align-items: center; padding: 0; font-size: 18px; flex-shrink: 0; }
+    
+    .empty-chat { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--text-muted); background: var(--wa-bg); padding: 20px; text-align: center; }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    .modal-content { background: var(--surface); padding: 24px; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+    .chain-badge { background: var(--primary); color: white; padding: 6px 12px; border-radius: 20px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; margin: 4px; }
+
+    /* =========================================
+       IPHONE/MOBILE FIX: Force Fullscreen
+       ========================================= */
+    @media (max-width: 768px) {
+      /* Hide main desktop sidebar */
+      .sidebar { display: none !important; }
+      
+      /* Force main content to full screen */
+      .main-content { margin: 0 !important; padding: 0 !important; width: 100vw !important; max-width: 100vw !important; height: 100vh !important; }
+      
+      /* Mobile Top Bar */
+      .mobile-top-bar { 
+        display: flex !important; 
+        justify-content: space-between; 
+        align-items: center;
+        background: var(--primary); 
+        color: white; 
+        padding: 15px; 
+        font-size: 16px;
+        height: 60px;
+      }
+
+      .chat-container { 
+        height: calc(100vh - 60px) !important; 
+        border-radius: 0; 
+        border: none; 
+        width: 100vw !important;
+      }
+      
+      .chat-sidebar { 
+        width: 100vw !important; 
+        border-left: none; 
+        display: flex; 
+      }
+      
+      .chat-main { 
+        display: none; 
+        position: fixed !important; 
+        top: 60px !important; 
+        left: 0 !important; 
+        right: 0 !important; 
+        bottom: 0 !important; 
+        z-index: 100 !important; 
+        border-radius: 0;
+        width: 100vw !important;
+      }
+
+      .chat-container.show-room .chat-sidebar { display: none !important; }
+      .chat-container.show-room .chat-main { display: flex !important; }
+
+      .back-btn { 
+        display: flex; 
+        align-items: center;
+        justify-content: center;
+      }
+    }
+    .mobile-top-bar { display: none; }
+  </style>
+</head>
+<body class="app-body" id="bodyRoot">
+
+  <div class="mobile-top-bar">
+    <span><i class="ph ph-chats"></i> محادثات الإدارة</span>
+    <a href="dashboard.html" style="color: white; text-decoration: none; font-size: 14px;"><i class="ph ph-house"></i> الرئيسية</a>
+  </div>
+
+  <div id="createRoomModal" class="modal-overlay">
+    <div class="modal-content">
+      <h2 style="margin-bottom: 20px; color: var(--primary);"><i class="ph ph-plus-circle"></i> محادثة جديدة</h2>
+      <div class="form-group"><label>اسم المحادثة</label><input type="text" id="roomNameInput" placeholder="مثال: استفسارات فيلا الدمام"></div>
+      <div class="form-group">
+        <label>إضافة مهندسين</label>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+          <select id="engineerSelect" style="flex: 1;"><option value="">-- اختر مهندساً --</option></select>
+          <button type="button" onclick="addEngineerToChain()" style="background: var(--primary); color: white; padding: 10px 15px; border-radius: 6px; border: none; cursor: pointer;"><i class="ph ph-plus"></i> إضافة</button>
+        </div>
+        <div id="engineersChainList" style="min-height: 40px; background: var(--bg); border-radius: 8px; padding: 10px; display: flex; flex-wrap: wrap; gap: 5px; align-content: flex-start;">
+          <span style="color: var(--text-muted); font-size: 13px;">لم يتم اختيار مهندسين بعد.</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button onclick="submitCreateRoom()" style="flex: 1; justify-content: center; background: var(--primary);"><i class="ph ph-check"></i> إنشاء</button>
+        <button onclick="closeCreateRoomModal()" style="flex: 1; justify-content: center; background: var(--text-muted);"><i class="ph ph-x"></i> إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار</div>
+    <a href="dashboard.html"><i class="ph ph-squares-four"></i> لوحة القيادة</a>
+    <a href="projects.html"><i class="ph ph-folder-open"></i> مجلد المشاريع</a>
+    <a href="fill_info.html"><i class="ph ph-users"></i> الفريق والإعدادات</a>
+    <a href="board.html"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
+    <a href="tasks.html"><i class="ph ph-list-dashes"></i> قائمة المهام</a>
+    <a href="chat.html" class="active"><i class="ph ph-chats"></i> المحادثات</a>
+    <a href="report.html"><i class="ph ph-presentation"></i> تصدير التقارير</a>
+    <a href="settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
+    <a href="#" onclick="handleLogout(event)" style="color: #ef4444;"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
+  </div>
+
+  <div class="main-content" style="padding: 20px;">
+    <div class="chat-container" id="chatContainer">
+      <div class="chat-sidebar">
+        <div class="chat-sidebar-header">
+          <span>المحادثات</span>
+          <button onclick="openCreateRoomModal()" style="padding: 6px 12px; font-size: 12px; border-radius: 6px;"><i class="ph ph-plus"></i> جديدة</button>
+        </div>
+        <div class="room-list" id="roomList"><p style="padding: 20px; text-align: center; color: var(--text-muted);">جاري التحميل...</p></div>
+      </div>
+
+      <div class="chat-main" id="chatMain">
+        <div class="empty-chat"><i class="ph ph-chats-teardrop" style="font-size: 64px; margin-bottom: 20px; color: var(--border);"></i><h2>اختر محادثة للبدء</h2></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="sounds.js"></script>
+  <script src="settings.js"></script>
+  
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import Saves from './saves.js';
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { collection, query, where, onSnapshot, addDoc, serverTimestamp, orderBy, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const ADMIN_EMAILS = ["hazemyt55@gmail.com", "m.salama@emaargulf.com"];
+    let currentUserEmail = "";
+    let currentUserName = "الإدارة";
+    let currentRoomId = null;
+    let unsubscribeMessages = null;
+    let selectedEngineers = []; 
+    let allWorkers = []; 
+
+    window.handleLogout = async function(e) {
+      e.preventDefault();
+      await signOut(auth);
+      window.location.href = 'index.html';
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user || !ADMIN_EMAILS.includes(user.email)) { window.location.href = 'index.html'; return; }
+      currentUserEmail = user.email;
+      const userDoc = await Saves.getUserData(user.uid);
+      currentUserName = (userDoc && userDoc.name) ? userDoc.name : "مدير النظام";
+      
+      allWorkers = await Saves.getWorkers();
+      const select = document.getElementById('engineerSelect');
+      allWorkers.forEach(w => { select.innerHTML += `<option value="${w.id}">${w.name} (${w.role || 'مهندس'})</option>`; });
+      loadRooms();
+    });
+
+    window.openCreateRoomModal = function() { selectedEngineers = []; renderEngineersChain(); document.getElementById('roomNameInput').value = ''; document.getElementById('createRoomModal').style.display = 'flex'; };
+    window.closeCreateRoomModal = function() { document.getElementById('createRoomModal').style.display = 'none'; };
+    window.addEngineerToChain = function() {
+        const select = document.getElementById('engineerSelect');
+        const workerId = select.value;
+        const workerName = select.options[select.selectedIndex].text;
+        if (!workerId) return;
+        if (selectedEngineers.find(e => e.id === workerId)) return alert("هذا المهندس مضاف بالفعل.");
+        selectedEngineers.push({ id: workerId, name: workerName });
+        renderEngineersChain();
+        select.value = '';
+    };
+    function renderEngineersChain() {
+        const container = document.getElementById('engineersChainList');
+        if (selectedEngineers.length === 0) { container.innerHTML = '<span style="color: var(--text-muted); font-size: 13px;">لم يتم اختيار مهندسين بعد.</span>'; return; }
+        container.innerHTML = selectedEngineers.map((e, index) => `<span class="chain-badge">${e.name}<i class="ph ph-x-circle" style="cursor: pointer; color: #fca5a5;" onclick="removeEngineerFromChain(${index})"></i></span>`).join('');
+    }
+    window.removeEngineerFromChain = function(index) { selectedEngineers.splice(index, 1); renderEngineersChain(); };
+
+    window.submitCreateRoom = async function() {
+      const roomName = document.getElementById('roomNameInput').value.trim();
+      if (!roomName) return alert("الرجاء إدخال اسم المحادثة.");
+      if (selectedEngineers.length === 0) return alert("الرجاء اختيار مهندس واحد على الأقل.");
+      let participants = [currentUserEmail];
+      selectedEngineers.forEach(e => participants.push(e.id)); 
+      participants = [...new Set(participants)];
+      try {
+        await addDoc(collection(db, "rooms"), { name: roomName, participants: participants, createdBy: currentUserEmail, createdAt: serverTimestamp(), lastMessage: "تم إنشاء المحادثة" });
+        if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+        closeCreateRoomModal();
+      } catch (error) { alert("خطأ في إنشاء المحادثة: " + error.message); }
+    };
+
+    function loadRooms() {
+      const roomList = document.getElementById('roomList');
+      const q = query(collection(db, "rooms"), where("participants", "array-contains", currentUserEmail));
+      onSnapshot(q, (snapshot) => {
+        roomList.innerHTML = '';
+        if (snapshot.empty) { roomList.innerHTML = '<p style="padding: 20px; text-align: center; color: var(--text-muted);">لا توجد محادثات.</p>'; return; }
+        const rooms = [];
+        snapshot.forEach((doc) => rooms.push({ id: doc.id, ...doc.data() }));
+        rooms.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+        
+        rooms.forEach((room) => {
+          const div = document.createElement('div');
+          div.className = `room-item ${currentRoomId === room.id ? 'active' : ''}`;
+          div.innerHTML = `
+            <div class="room-item-info">
+              <strong>${room.name}</strong>
+              <small>اضغط للدخول</small>
+            </div>
+            <button class="sidebar-delete-btn" onclick="event.stopPropagation(); deleteRoom('${room.id}')" title="حذف المحادثة">
+              <i class="ph ph-trash"></i>
+            </button>
+          `;
+          div.onclick = (e) => {
+             if(e.target.closest('.sidebar-delete-btn')) return;
+             openRoom(room.id, room.name, room.participants);
+          };
+          roomList.appendChild(div);
+        });
+      });
+    }
+
+    async function openRoom(roomId, roomName, participants) {
+      currentRoomId = roomId;
+      document.getElementById('chatContainer').classList.add('show-room');
+
+      let participantNames = [];
+      participants.forEach(p => {
+          const worker = allWorkers.find(w => w.id === p);
+          if (worker) participantNames.push(worker.name);
+          else if (p === "hazemyt55@gmail.com") participantNames.push("Hazem DEV");
+          else if (p === "m.salama@emaargulf.com") participantNames.push("محمد سلامة");
+      });
+      const namesString = participantNames.length > 0 ? participantNames.join(', ') : 'بدون مشاركين';
+      
+      const chatMain = document.getElementById('chatMain');
+      chatMain.innerHTML = `
+        <div class="chat-header">
+          <button class="back-btn" onclick="closeRoomMobile()"><i class="ph ph-arrow-right"></i></button>
+          <div class="chat-header-info">
+            <span class="chat-header-title"><i class="ph ph-user-circle"></i> ${roomName}</span>
+            <span class="chat-header-participants"><i class="ph ph-users"></i> ${namesString}</span>
+          </div>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-area">
+          <button onclick="document.getElementById('chatInput').focus()" style="background: transparent; color: #667781; width: auto;"><i class="ph ph-smiley" style="font-size: 24px;"></i></button>
+          <input type="text" id="chatInput" placeholder="اكتب رسالة..." onkeypress="if(event.key === 'Enter') sendMessage()">
+          <button onclick="sendMessage()"><i class="ph ph-paper-plane-right"></i></button>
+        </div>
+      `;
+      loadMessages(roomId);
+    }
+
+    window.closeRoomMobile = function() {
+        document.getElementById('chatContainer').classList.remove('show-room');
+        currentRoomId = null;
+        if (unsubscribeMessages) unsubscribeMessages();
+    };
+
+    window.deleteRoom = async function(roomId) {
+        if (confirm("هل أنت متأكد من حذف هذه المحادثة بالكامل؟")) {
+            try {
+                await deleteDoc(doc(db, "rooms", roomId));
+                if (currentRoomId === roomId) closeRoomMobile();
+            } catch (error) { alert("خطأ في الحذف: " + error.message); }
+        }
+    };
+
+    window.deleteMessage = async function(roomId, msgId) {
+        if (confirm("هل أنت متأكد من حذف هذه الرسالة؟")) {
+            try {
+                await deleteDoc(doc(db, "rooms", roomId, "messages", msgId));
+                if (typeof Sounds !== 'undefined') Sounds.playClick();
+            } catch (error) { alert("خطأ في حذف الرسالة: " + error.message); }
+        }
+    };
+
+    function loadMessages(roomId) {
+      if (unsubscribeMessages) unsubscribeMessages();
+      const messagesContainer = document.getElementById('chatMessages');
+      const q = query(collection(db, "rooms", roomId, "messages"), orderBy("createdAt", "asc"));
+
+      unsubscribeMessages = onSnapshot(q, (snapshot) => {
+        messagesContainer.innerHTML = '';
+        snapshot.forEach((doc) => {
+          const msg = doc.data();
+          const msgId = doc.id;
+          const isSentByMe = msg.sender === currentUserEmail;
+          const time = msg.createdAt ? new Date(msg.createdAt.toDate()).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '...';
+          
+          let displayName = msg.senderName || "مهندس";
+          if (!isSentByMe) {
+              const worker = allWorkers.find(w => w.email === msg.sender);
+              if (worker) displayName = worker.name; 
+          }
+
+          const wrapper = document.createElement('div');
+          wrapper.className = `message-wrapper ${isSentByMe ? 'sent' : 'received'}`;
+          
+          wrapper.innerHTML = `
+            ${isSentByMe ? `<button class="delete-msg-btn" onclick="deleteMessage('${roomId}', '${msgId}')" title="حذف الرسالة"><i class="ph ph-trash"></i></button>` : ''}
+            <div class="message ${isSentByMe ? 'sent' : 'received'}">
+              ${!isSentByMe ? `<span class="message-meta">${displayName}</span>` : ''}
+              ${msg.text}
+              <span class="message-time">${time}</span>
+              ${isSentByMe ? '<i class="ph ph-checks" style="color: #53bdeb; font-size: 12px; margin-left: 5px; float: left; margin-top: 6px;"></i>' : ''}
+            </div>
+          `;
+          messagesContainer.appendChild(wrapper);
+        });
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      });
+    }
+
+    window.sendMessage = async function() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text || !currentRoomId) return;
+      input.value = ''; 
+      try {
+        await addDoc(collection(db, "rooms", currentRoomId, "messages"), {
+          text: text, sender: currentUserEmail, senderName: currentUserName, createdAt: serverTimestamp()
+        });
+        if (typeof Sounds !== 'undefined') Sounds.playClick();
+      } catch (error) { alert("خطأ في إرسال الرسالة: " + error.message); }
+    };
+  </script>
+</body>
+</html>

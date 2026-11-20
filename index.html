@@ -1,256 +1,304 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" id="htmlRoot">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Emaar Portal - بوابة إعمار</title>
+  <title>Emaar Tools - أدوات إعمار</title>
   <link rel="icon" href="data:,">
   
-  <!-- Fonts & Icons -->
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web/src/regular/style.css">
 
   <style>
     :root {
-      --primary: #0f4c81;      
-      --accent: #d4af37;       
-      --bg: #f4f7f9;
-      --surface: #ffffff;
-      --text-main: #1e293b;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
+      --primary: #0f4c81; --primary-light: #e0f2fe; --accent: #d4af37; 
+      --bg: #f4f7f9; --surface: #ffffff; --text-main: #1e293b;
+      --text-muted: #64748b; --border: #e2e8f0; --sidebar-width: 260px;
     }
-
     * { box-sizing: border-box; font-family: 'Cairo', sans-serif; margin: 0; padding: 0; }
-    
-    body {
-      /* Emaar Background Image */
-      background: url('Emaar Tasks/assets/bg-login.webp') center/cover no-repeat fixed;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 20px;
-      color: var(--text-main);
-    }
+    body { background: var(--bg); display: flex; min-height: 100vh; color: var(--text-main); }
 
-    /* Glassmorphism Card */
-    .portal-card {
-      background: rgba(255, 255, 255, 0.92);
-      backdrop-filter: blur(15px);
-      -webkit-backdrop-filter: blur(15px);
-      border-radius: 24px;
-      width: 100%;
-      max-width: 1000px;
-      padding: 50px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-      border: 1px solid rgba(255, 255, 255, 0.5);
+    .sidebar {
+      width: var(--sidebar-width); background: var(--surface); border-left: 1px solid var(--border);
+      padding: 24px 20px; display: flex; flex-direction: column; position: fixed;
+      height: 100vh; right: 0; top: 0; z-index: 100; transition: transform 0.3s ease;
     }
+    .brand { display: flex; align-items: center; gap: 12px; padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+    .brand img { height: 40px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .brand h2 { font-size: 20px; color: var(--primary); }
+    .nav-links { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 15px; transition: all 0.2s; cursor: pointer; }
+    .nav-item i { font-size: 20px; }
+    .nav-item:hover, .nav-item.active { background: var(--primary-light); color: var(--primary); }
+    .user-profile { display: flex; align-items: center; gap: 12px; padding-top: 20px; border-top: 1px solid var(--border); }
+    .avatar { width: 40px; height: 40px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; overflow: hidden; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .user-info { flex: 1; overflow: hidden; }
+    .user-info p { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-info span { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+    .logout-btn { background: transparent; border: none; color: #ef4444; font-size: 22px; cursor: pointer; padding: 8px; border-radius: 50%; transition: 0.2s; }
+    .logout-btn:hover { background: #fee2e2; }
 
-    /* Header */
-    .portal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 2px solid var(--border);
-      padding-bottom: 20px;
-      margin-bottom: 40px;
-    }
-    .portal-header h1 {
-      color: var(--primary);
-      font-size: 32px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .portal-header h1 img {
-      height: 50px;
-      border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    .portal-header p {
-      color: var(--text-muted);
-      font-size: 16px;
-      font-weight: 600;
-    }
+    .main-content { margin-right: var(--sidebar-width); flex: 1; padding: 30px 40px; transition: margin-right 0.3s ease; }
+    .top-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
+    .greeting h1 { font-size: 26px; color: var(--text-main); margin-bottom: 5px; }
+    .greeting p { color: var(--text-muted); font-size: 14px; }
+    .search-box { position: relative; width: 300px; }
+    .search-box i { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 20px; }
+    .search-box input { width: 100%; padding: 12px 45px 12px 15px; border: 1px solid var(--border); border-radius: 12px; font-family: 'Cairo'; font-size: 14px; outline: none; transition: all 0.3s; background: var(--surface); }
+    .search-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
 
-    /* Apps Grid */
-    .apps-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 25px;
-    }
+    .stats-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 30px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 12px; }
+    .stat-icon { width: 42px; height: 42px; background: var(--primary-light); color: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+    .stat-text p { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+    .stat-text strong { font-size: 16px; color: var(--text-main); }
 
-    .app-card {
-      background: var(--surface);
-      border: 2px solid var(--border);
-      border-radius: 16px;
-      padding: 30px;
-      text-decoration: none;
-      color: var(--text-main);
-      transition: all 0.3s ease;
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      position: relative;
-      overflow: hidden;
-    }
+    .tool-section { margin-bottom: 40px; }
+    .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 20px; color: var(--primary); }
+    .section-header i { color: var(--accent); font-size: 24px; }
+    .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    .app-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; text-decoration: none; color: var(--text-main); transition: all 0.3s ease; display: flex; align-items: flex-start; gap: 15px; position: relative; overflow: hidden; }
+    .app-card:hover { transform: translateY(-4px); box-shadow: 0 12px 25px rgba(15, 76, 129, 0.08); border-color: #cbd5e1; }
+    .app-card.highlight { border: 2px solid var(--accent); background: linear-gradient(to bottom right, #ffffff, #fefce8); }
+    .app-card.soon { opacity: 0.65; cursor: not-allowed; pointer-events: none; }
+    .app-icon { font-size: 28px; width: 55px; height: 55px; display: flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary); border-radius: 12px; flex-shrink: 0; transition: all 0.3s; }
+    .app-card:hover .app-icon { background: var(--primary); color: white; transform: scale(1.05); }
+    .app-info h3 { font-size: 17px; color: var(--text-main); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .app-info p { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+    .badge { background: var(--accent); color: white; font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 700; }
+    .badge.live { background: #16a34a; }
+    .badge.soon { background: #94a3b8; }
+    .app-card.hidden, .tool-section.hidden { display: none; }
 
-    .app-card:hover {
-      transform: translateY(-5px);
-      border-color: var(--primary);
-      box-shadow: 0 15px 30px rgba(15, 76, 129, 0.15);
-    }
+    .mobile-menu-btn { display: none; background: var(--surface); border: 1px solid var(--border); padding: 10px; border-radius: 10px; cursor: pointer; font-size: 24px; color: var(--primary); }
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
 
-    .app-card::before {
-      content: '';
-      position: absolute;
-      top: 0; right: 0; width: 6px; height: 100%;
-      background: var(--accent);
-      transform: scaleY(0);
-      transition: transform 0.3s ease;
-      transform-origin: top;
-    }
-
-    .app-card:hover::before {
-      transform: scaleY(1);
-    }
-
-    .app-icon {
-      width: 60px;
-      height: 60px;
-      background: #f1f5f9;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 30px;
-      color: var(--primary);
-      transition: all 0.3s;
-    }
-
-    .app-card:hover .app-icon {
-      background: var(--primary);
-      color: var(--accent);
-    }
-
-    .app-info h3 {
-      font-size: 22px;
-      color: var(--primary);
-      margin-bottom: 8px;
-    }
-
-    .app-info p {
-      font-size: 15px;
-      color: var(--text-muted);
-      line-height: 1.5;
-    }
-
-    /* Footer Links */
-    .portal-footer {
-      margin-top: 50px;
-      padding-top: 20px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 20px;
-    }
-
-    .portal-footer a {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: all 0.2s;
-      padding: 8px 15px;
-      border-radius: 20px;
-      background: var(--bg);
-    }
-
-    .portal-footer a:hover {
-      color: white;
-      background: var(--primary);
-    }
-
-    /* Mobile Responsive */
-    @media (max-width: 768px) {
-      .portal-card { padding: 25px; }
-      .portal-header { flex-direction: column; text-align: center; gap: 15px; }
-      .apps-grid { grid-template-columns: 1fr; }
-      .app-card { padding: 20px; flex-direction: row; align-items: center; text-align: right; }
-      .app-icon { flex-shrink: 0; }
-      .portal-footer { gap: 10px; }
+    @media (max-width: 992px) {
+      .sidebar { transform: translateX(100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main-content { margin-right: 0; padding: 20px; }
+      .mobile-menu-btn { display: block; }
+      .overlay.active { display: block; }
+      .top-header { flex-direction: column; align-items: flex-start; }
+      .search-box { width: 100%; }
     }
   </style>
 </head>
 <body>
 
-  <div class="portal-card">
-    
-    <!-- Header -->
-    <div class="portal-header">
-      <h1>
-        <img src="Emaar Tasks/assets/logo.jpg" alt="Emaar Logo" onerror="this.style.display='none'">
-        بوابة إعمار
-      </h1>
-      <p>نظام إدارة المشاريع المتكامل</p>
+  <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <img src="assets/logo.jpg" alt="Emaar Logo" onerror="this.style.display='none'">
+      <h2>أدوات إعمار</h2>
     </div>
 
-    <!-- The Apps Grid -->
-    <div class="apps-grid">
-      
-      <!-- Emaar Tasks App -->
-      <a href="Emaar Tasks/index.html" class="app-card">
-        <div class="app-icon"><i class="ph ph-squares-four"></i></div>
-        <div class="app-info">
-          <h3>إدارة المهام (Tasks)</h3>
-          <p>نظام تسجيل الدخول، إدارة الفريق، لوحة المهام (Kanban)، وتوزيع المهام على العمال.</p>
-        </div>
-      </a>
+    <nav class="nav-links">
+      <a href="#" class="nav-item active"><i class="ph ph-house"></i> الرئيسية</a>
+      <a href="#tools" class="nav-item"><i class="ph ph-squares-four"></i> كل الأدوات</a>
+      <a href="https://emaar-tasks.web.app" target="_blank" class="nav-item"><i class="ph ph-check-square-offset"></i> إدارة المهام</a>
+    </nav>
 
-      <!-- Preview Devices App -->
-      <a href="Emaar Tasks/preview_devices.html" class="app-card">
-        <div class="app-icon"><i class="ph ph-devices"></i></div>
-        <div class="app-info">
-          <h3>معاينة الأجهزة (Device Preview)</h3>
-          <p>شاهد كيف يبدو التطبيق على شاشة الموبايل والكمبيوتر في نفس الوقت.</p>
-        </div>
-      </a>
+    <div class="user-profile">
+      <div class="avatar" id="user-avatar">H</div>
+      <div class="user-info">
+        <p id="user-name">جاري التحميل...</p>
+        <span id="user-email">...</span>
+      </div>
+      <button id="logout-btn" class="logout-btn" title="تسجيل الخروج"><i class="ph ph-sign-out"></i></button>
+    </div>
+  </aside>
 
-      <!-- Preview Tasks App -->
-      <a href="Emaar Tasks/preview_tasks.html" class="app-card">
-        <div class="app-icon"><i class="ph ph-monitor-play"></i></div>
-        <div class="app-info">
-          <h3>شاشة عرض المهام (Tasks Screen)</h3>
-          <p>شاشة مخصصة للعرض فقط (بدون تعديل) يمكن عرضها على شاشات المكاتب.</p>
+  <main class="main-content">
+    <div class="top-header">
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="ph ph-list"></i></button>
+        <div class="greeting">
+          <h1 id="greeting-text">مرحباً بك 👋</h1>
+          <p>اختر الأداة التي تريد البدء بها اليوم.</p>
         </div>
-      </a>
-
-      <!-- Preview Workers App -->
-      <a href="Emaar Tasks/preview_worker.html" class="app-card">
-        <div class="app-icon"><i class="ph ph-identification-badge"></i></div>
-        <div class="app-info">
-          <h3>شاشة عرض الفريق (Team Screen)</h3>
-          <p>دليل العمال والمهندسين مع صورهم وعدد المهام المسندة إليهم.</p>
-        </div>
-      </a>
-
+      </div>
+      <div class="search-box">
+        <i class="ph ph-magnifying-glass"></i>
+        <input type="text" id="search-input" placeholder="ابحث عن أداة..." onkeyup="filterTools()">
+      </div>
     </div>
 
-    <!-- Footer Social Links -->
-    <div class="portal-footer">
-      <a href="https://emaargulf.com" target="_blank"><i class="ph ph-globe"></i> الموقع الرسمي</a>
-      <a href="https://www.linkedin.com/company/emaargulf" target="_blank"><i class="ph ph-linkedin-logo"></i> LinkedIn</a>
-      <a href="https://www.instagram.com/emaar_gulf/?hl=en" target="_blank"><i class="ph ph-instagram-logo"></i> Instagram</a>
-      <a href="https://x.com/emaar_gulf" target="_blank"><i class="ph ph-x-logo"></i> X (Twitter)</a>
-      <a href="https://www.tiktok.com/@emaar_gulf" target="_blank"><i class="ph ph-tiktok-logo"></i> TikTok</a>
+    <div class="stats-strip">
+      <div class="stat-card">
+        <div class="stat-icon"><i class="ph ph-squares-four"></i></div>
+        <div class="stat-text"><p>الأدوات المتاحة</p><strong>9</strong></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="ph ph-rocket"></i></div>
+        <div class="stat-text"><p>قيد التطوير</p><strong>1</strong></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="ph ph-buildings"></i></div>
+        <div class="stat-text"><p>الشركة</p><strong>إعمار الخليج</strong></div>
+      </div>
     </div>
 
-  </div>
+    <!-- ========================================== -->
+    <!-- SECTION 1: Productivity & Documents         -->
+    <!-- ========================================== -->
+    <div class="tool-section" id="tools">
+      <h2 class="section-header"><i class="ph ph-briefcase"></i> الإنتاجية والمستندات</h2>
+      <div class="apps-grid">
+        
+        <!-- Emaar Text -->
+        <a href="Tools/Emaar Text/Emaar_Text.html" class="app-card highlight">
+          <div class="app-icon">📝</div>
+          <div class="app-info"><h3>Emaar Text <span class="badge live">متاح</span></h3><p>محرر النصوص الخاص بإعمار — كتابة وتنسيق وحفظ كملف نصي.</p></div>
+        </a>
 
+        <!-- Emaar Sheet -->
+        <a href="Tools/Emaar Sheet/Emaar_Sheet.html" class="app-card highlight">
+          <div class="app-icon">📊</div>
+          <div class="app-info"><h3>Emaar Sheet <span class="badge live">متاح</span></h3><p>جداول البيانات والمعادلات الحسابية — استيراد وتصدير Excel/CSV.</p></div>
+        </a>
+
+        <!-- Emaar Show -->
+        <a href="Tools/Emaar Show/Emaar_Show.html" class="app-card highlight">
+          <div class="app-icon">🎬</div>
+          <div class="app-info"><h3>Emaar Show <span class="badge live">متاح</span></h3><p>عروض تقديمية احترافية — شرائح، نصوص، صور، ووضع عرض كامل.</p></div>
+        </a>
+
+        <!-- Emaar Calc -->
+        <a href="Tools/Emaar Calc/Emaar_Calc.html" class="app-card highlight">
+          <div class="app-icon">🧮</div>
+          <div class="app-info"><h3>Emaar Calc <span class="badge live">متاح</span></h3><p>آلة حاسبة علمية، محول وحدات، ومحول عملات بأسعار مباشرة.</p></div>
+        </a>
+
+        <!-- Emaar Forms -->
+        <a href="Tools/Emaar Forms/Emaar_Forms.html" class="app-card highlight">
+          <div class="app-icon">📋</div>
+          <div class="app-info"><h3>Emaar Forms <span class="badge live">متاح</span></h3><p>نماذج واستبيانات داخلية — جمع الردود وتصديرها.</p></div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SECTION 2: Media & Communication            -->
+    <!-- ========================================== -->
+    <div class="tool-section">
+      <h2 class="section-header"><i class="ph ph-chats-circle"></i> الوسائط والتواصل</h2>
+      <div class="apps-grid">
+
+        <!-- Emaar AI -->
+        <a href="Tools/Emaar AI/Emaar_AI.html" class="app-card highlight">
+          <div class="app-icon">🧠</div>
+          <div class="app-info"><h3>Emaar AI <span class="badge live">متاح</span></h3><p>المساعد الذكي الداخلي — يعمل بالذكاء الاصطناعي Gemini.</p></div>
+        </a>
+
+        <!-- Emaar Tube -->
+        <a href="Tools/Emaar Tube/Emaar_Tube.html" class="app-card highlight">
+          <div class="app-icon">🎥</div>
+          <div class="app-info"><h3>Emaar Tube <span class="badge live">متاح</span></h3><p>مكتبة الفيديو الداخلية — روابط YouTube منظمة بفئات وبحث.</p></div>
+        </a>
+
+        <!-- Emaar Chat -->
+        <a href="Tools/Emaar Chat/Emaar_Chat.html" class="app-card highlight">
+          <div class="app-icon">💬</div>
+          <div class="app-info"><h3>Emaar Chat <span class="badge live">متاح</span></h3><p>محادثات جماعية فورية — إنشاء غرف واختيار الأعضاء.</p></div>
+        </a>
+
+        <!-- Emaar Mail -->
+        <a href="Tools/Emaar Mail/Emaar_Mail.html" class="app-card highlight">
+          <div class="app-icon">📧</div>
+          <div class="app-info"><h3>Emaar Mail <span class="badge live">متاح</span></h3><p>بريد إلكتروني داخلي خفيف — صندوق وارد وإرسال.</p></div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SECTION 3: Coming Soon                      -->
+    <!-- ========================================== -->
+    <div class="tool-section">
+      <h2 class="section-header"><i class="ph ph-rocket"></i> قريباً</h2>
+      <div class="apps-grid">
+        
+        <div class="app-card soon">
+          <div class="app-icon">🗓️</div>
+          <div class="app-info">
+            <h3>Emaar Calendar <span class="badge soon">قريباً</span></h3>
+            <p>تقويم داخلي لجدولة الاجتماعات والمناسبات.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCx5lzS0B1QqqfuzOol5cYlzbecYhB9HoA",
+      authDomain: "emaar-tools.firebaseapp.com",
+      projectId: "emaar-tools",
+      storageBucket: "emaar-tools.firebasestorage.app",
+      messagingSenderId: "632274691084",
+      appId: "1:632274691084:web:dbbdfd1fb570ade3b0fa29",
+      measurementId: "G-FM7HLQEJ2H"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    document.body.style.visibility = 'hidden';
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.body.style.visibility = 'visible';
+        const email = user.email;
+        const name = user.displayName || email.split('@')[0];
+        
+        document.getElementById('user-name').innerText = name;
+        document.getElementById('user-email').innerText = email;
+        document.getElementById('greeting-text').innerText = `مرحباً، ${name.split(' ')[0]} 👋`;
+
+        const avatarEl = document.getElementById('user-avatar');
+        if (user.photoURL) {
+          avatarEl.innerHTML = `<img src="${user.photoURL}" alt="" onerror="this.style.display='none'; this.parentElement.innerText='${name.charAt(0).toUpperCase()}';">`;
+        } else {
+          avatarEl.innerText = name.charAt(0).toUpperCase();
+        }
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      signOut(auth).then(() => { window.location.href = "login.html"; });
+    });
+
+    window.toggleSidebar = function() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('active');
+    }
+
+    window.filterTools = function() {
+      const query = document.getElementById('search-input').value.trim().toLowerCase();
+      const cards = document.querySelectorAll('.app-card');
+      const sections = document.querySelectorAll('.tool-section');
+
+      cards.forEach(card => {
+        const text = card.innerText.toLowerCase();
+        card.classList.toggle('hidden', !text.includes(query));
+      });
+
+      sections.forEach(section => {
+        const visibleCards = section.querySelectorAll('.app-card:not(.hidden)');
+        section.classList.toggle('hidden', visibleCards.length === 0);
+      });
+    }
+  </script>
 </body>
 </html>

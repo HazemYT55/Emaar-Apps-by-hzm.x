@@ -5,7 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ملفي الشخصي - إعمار</title>
   <link rel="icon" href="data:,">
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
+  <style>
+    .worker-header { text-align: center; padding: 30px 20px; background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: white; border-radius: 16px; margin-bottom: 25px; }
+    .worker-avatar { width: 110px; height: 110px; background: white; border-radius: 50%; margin: 0 auto 15px; display: flex; justify-content: center; align-items: center; font-size: 55px; color: var(--primary); overflow: hidden; position: relative; cursor: pointer; }
+    .worker-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; margin-bottom: 20px; }
+    .profile-section h2 { font-size: 18px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid var(--border); color: var(--primary); display: flex; align-items: center; gap: 8px; }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .info-item label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; }
+    .info-item .info-value { font-size: 15px; font-weight: 600; color: var(--text-main); word-break: break-word; }
+    .info-item input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--bg); color: var(--text-main); }
+    .info-item input.editable { border-color: var(--primary); }
+    .save-bar { position: sticky; bottom: 15px; background: var(--surface); padding: 15px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 -5px 20px rgba(0,0,0,0.08); margin-top: 20px; display: flex; justify-content: center; }
+    .toast { position: fixed; bottom: 20px; left: 20px; background: var(--success); color: white; padding: 14px 22px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); opacity: 0; transform: translateY(20px); transition: all 0.3s; z-index: 9999; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.error { background: var(--danger); }
+    .empty-state { text-align: center; padding: 30px; color: var(--text-muted); }
+  </style>
 </head>
 <body class="app-body" id="bodyRoot">
 
@@ -13,6 +31,7 @@
     <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار الخليج</div>
     <a href="worker_dashboard.html"><i class="ph ph-check-square-offset"></i> مهامي</a>
     <a href="worker_board.html"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
+    <a href="worker_chat.html"><i class="ph ph-chats"></i> محادثاتي</a>
     <a href="worker_profile.html" class="active"><i class="ph ph-user"></i> ملفي الشخصي</a>
     <a href="worker_settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
     <a href="#" onclick="handleLogout(event)" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
@@ -20,140 +39,214 @@
 
   <div class="main-content">
     <h1>ملفي الشخصي</h1>
-    <p class="subtitle">تحديث بياناتي الشخصية.</p>
+    <p class="subtitle">عرض بياناتي وتحديث معلوماتي الشخصية.</p>
 
-    <div class="card" style="max-width: 600px;">
-      <div id="profileContent">
-        <p>جاري تحميل البيانات...</p>
+    <div id="profileContent">
+      <div style="text-align: center; padding: 50px;">
+        <i class="ph ph-spinner-gap" style="font-size: 40px; color: var(--primary);"></i>
+        <p style="margin-top: 15px; color: var(--text-muted);">جاري تحميل بياناتك...</p>
       </div>
     </div>
   </div>
 
+  <div id="toast" class="toast"></div>
+
   <script src="sounds.js"></script>
   <script src="settings.js"></script>
-  
+
   <script type="module">
-    import { db, auth } from './firebase-config.js';
+    import { db, auth, storage } from './firebase-config.js';
     import Saves from './saves.js';
-    import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-    let currentUid = null;
-    let currentWorkerId = null;
-    let timeoutTimer;
+    let CURRENT_UID = null;
+    let CURRENT_WORKER_ID = null;
 
-    window.handleLogout = async function(e) {
+    window.handleLogout = async function (e) {
       e.preventDefault();
       await signOut(auth);
       window.location.href = 'index.html';
     };
 
-    // --- THE SAFETY NET ---
-    timeoutTimer = setTimeout(() => {
-        document.getElementById('profileContent').innerHTML = `
-            <div style="text-align: center; padding: 20px;">
-                <i class="ph ph-warning-circle" style="font-size: 48px; color: var(--danger);"></i>
-                <h3 style="color: var(--danger); margin-top: 10px;">انتهت مهلة الاتصال</h3>
-                <p>لم يتمكن التطبيق من قراءة حسابك. جرب تسجيل الخروج والدخول مرة أخرى.</p>
-                <a href="index.html" style="display: inline-block; background: var(--primary); color: white; padding: 10px 20px; border-radius: 6px; margin-top: 15px; text-decoration: none;">تسجيل الدخول</a>
-            </div>
-        `;
-    }, 5000); // 5 seconds max
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (isError ? ' error' : '');
+      setTimeout(() => { t.className = 'toast'; }, 3000);
+    }
+    function fmtDate(v) {
+      if (!v) return 'غير محدد';
+      try {
+        const d = v.toDate ? v.toDate() : new Date(v);
+        if (isNaN(d.getTime())) return 'غير محدد';
+        return d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+      } catch { return 'غير محدد'; }
+    }
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
 
     onAuthStateChanged(auth, async (user) => {
-      clearTimeout(timeoutTimer); // Clear the timeout if auth works
+      if (!user) { window.location.href = 'login.html'; return; }
+      CURRENT_UID = user.uid;
 
-      if (!user) { 
-          window.location.href = 'index.html'; 
-          return; 
-      }
-
-      currentUid = user.uid;
-      
-      // Directly get the user document
       try {
-          const docRef = doc(db, "users", user.uid);
-          const docSnap = await getDoc(docRef);
-          
-          if (docSnap.exists()) {
-            const userData = docSnap.data();
-            if (userData.workerId) {
-               currentWorkerId = userData.workerId;
-               loadProfile();
-            } else {
-               document.getElementById('profileContent').innerHTML = `
-                  <div style="text-align: center; padding: 40px;">
-                     <i class="ph ph-warning-circle" style="font-size: 48px; color: var(--danger); margin-bottom: 15px;"></i>
-                     <h2 style="color: var(--danger);">لم يتم ربط حسابك</h2>
-                     <p style="color: var(--text-muted);">يرجى مراجعة المدير لربط حسابك بملف عامل.</p>
-                  </div>
-               `;
-            }
-          } else {
-             document.getElementById('profileContent').innerHTML = '<p>لم يتم العثور على بياناتك في النظام.</p>';
-          }
+        const userSnap = await getDoc(doc(db, "users", user.uid));
+        if (!userSnap.exists() || !userSnap.data().workerId) {
+          document.getElementById('profileContent').innerHTML = `
+            <div class="empty-state">
+              <i class="ph ph-warning-circle" style="font-size: 48px; color: var(--danger); margin-bottom: 15px;"></i>
+              <h2 style="color: var(--danger);">لم يتم ربط حسابك</h2>
+              <p>يرجى مراجعة المدير لربط حسابك بملف مهندس.</p>
+            </div>`;
+          return;
+        }
+        CURRENT_WORKER_ID = userSnap.data().workerId;
+
+        // تحديث آخر تسجيل دخول
+        try { await updateDoc(doc(db, 'workers', CURRENT_WORKER_ID), { lastLoginAt: serverTimestamp() }); } catch {}
+
+        await loadProfile();
       } catch (error) {
-          console.error("Error fetching user data:", error);
-          document.getElementById('profileContent').innerHTML = `<p style="color: red;">خطأ في الاتصال: ${error.message}</p>`;
+        document.getElementById('profileContent').innerHTML = `<p style="color: var(--danger);">خطأ في الاتصال: ${esc(error.message)}</p>`;
       }
     });
 
     async function loadProfile() {
-      try {
-          const workers = await Saves.getWorkers();
-          const worker = workers.find(w => w.id === currentWorkerId);
+      // استخدام getWorker بدلاً من getWorkers لحل مشكلة الصلاحيات
+      const worker = await Saves.getWorker(CURRENT_WORKER_ID);
 
-          if (!worker) {
-              document.getElementById('profileContent').innerHTML = '<p>خطأ: لم يتم العثور على بيانات العامل في قاعدة البيانات.</p>';
-              return;
-          }
-
-          document.getElementById('profileContent').innerHTML = `
-            <div style="text-align: center; margin-bottom: 30px;">
-                <div style="width: 100px; height: 100px; background: var(--primary); border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 15px auto;">
-                    <i class="ph ph-user" style="font-size: 50px; color: white;"></i>
-                </div>
-                <h2 style="color: var(--primary);">${worker.name || 'عامل'}</h2>
-                <p style="color: var(--text-muted);">${worker.role || 'عامل'}</p>
-            </div>
-
-            <form onsubmit="saveProfile(event)">
-                <div class="form-group">
-                    <label>الاسم الكامل</label>
-                    <input type="text" id="profileName" value="${worker.name || ''}" required>
-                </div>
-                <div class="form-group">
-                    <label>رقم الهاتف</label>
-                    <input type="text" id="profilePhone" value="${worker.phone || ''}">
-                </div>
-                <button type="submit" style="width: 100%; justify-content: center; background: var(--primary); margin-top: 10px;">
-                    <i class="ph ph-check"></i> حفظ التعديلات
-                </button>
-            </form>
-          `;
-      } catch (err) {
-          console.error("Error loading profile:", err);
-          document.getElementById('profileContent').innerHTML = `<p style="color: red;">حدث خطأ أثناء تحميل الملف: ${err.message}</p>`;
+      if (!worker) {
+        document.getElementById('profileContent').innerHTML = `
+          <div class="empty-state">
+            <i class="ph ph-warning-circle" style="font-size: 48px; color: var(--danger); margin-bottom: 15px;"></i>
+            <h2 style="color: var(--danger);">لم يتم العثور على بيانات المهندس</h2>
+            <p>تأكد من أن حسابك مرتبط بملف مهندس من قبل الإدارة.</p>
+          </div>`;
+        return;
       }
+
+      document.getElementById('profileContent').innerHTML = `
+        <div class="worker-header">
+          <div class="worker-avatar" onclick="document.getElementById('workerPhotoInput').click()">
+            ${worker.photoURL ? `<img src="${esc(worker.photoURL)}" alt="avatar" onerror="this.parentElement.innerHTML='<i class=\\'ph ph-user\\'></i>'">` : '<i class="ph ph-user"></i>'}
+            <div style="position:absolute; bottom:0; right:0; background:var(--primary); color:white; width:30px; height:30px; border-radius:50%; display:flex; justify-content:center; align-items:center; border:2px solid white; font-size:14px;"><i class="ph ph-camera"></i></div>
+            <input type="file" id="workerPhotoInput" style="display:none;" accept="image/*" onchange="uploadWorkerPhoto(this)">
+          </div>
+          <h2 style="margin: 0; color: white !important;">${esc(worker.name || 'بدون اسم')}</h2>
+          <p style="margin: 6px 0 0; opacity: 0.9;">${esc(worker.jobTitle || worker.role || 'مهندس')}</p>
+        </div>
+
+        <form id="personalForm" onsubmit="savePersonal(event)">
+          <div class="profile-section">
+            <h2><i class="ph ph-user-circle"></i> المعلومات الشخصية <span style="font-size:12px; color:var(--text-muted); font-weight:normal;">(يمكنك تعديل الاسم والهاتف فقط)</span></h2>
+            <div class="info-grid">
+              <div class="info-item"><label>الاسم الكامل *</label><input class="editable" id="profileName" value="${esc(worker.name || '')}" required></div>
+              <div class="info-item"><label>رقم الهاتف</label><input class="editable" id="profilePhone" value="${esc(worker.phone || '')}"></div>
+              <div class="info-item"><label>الرقم الوظيفي</label><div class="info-value">${esc(worker.employeeId || 'غير محدد')}</div></div>
+              <div class="info-item"><label>البريد الإلكتروني</label><div class="info-value">${esc(worker.email || 'غير محدد')}</div></div>
+              <div class="info-item"><label>الجنسية</label><div class="info-value">${esc(worker.nationality || 'غير محدد')}</div></div>
+              <div class="info-item"><label>تاريخ الميلاد</label><div class="info-value">${fmtDate(worker.birthDate)}</div></div>
+            </div>
+          </div>
+
+          <div class="profile-section">
+            <h2><i class="ph ph-briefcase"></i> المعلومات الوظيفية</h2>
+            <div class="info-grid">
+              <div class="info-item"><label>المسمى الوظيفي</label><div class="info-value">${esc(worker.jobTitle || worker.role || 'غير محدد')}</div></div>
+              <div class="info-item"><label>التخصص الهندسي</label><div class="info-value">${esc(worker.engineeringSpecialty || 'غير محدد')}</div></div>
+              <div class="info-item"><label>القسم</label><div class="info-value">${esc(worker.department || 'غير محدد')}</div></div>
+              <div class="info-item"><label>سنوات الخبرة</label><div class="info-value">${worker.yearsOfExperience ?? 'غير محدد'}</div></div>
+              <div class="info-item"><label>تاريخ التعيين</label><div class="info-value">${fmtDate(worker.hireDate)}</div></div>
+              <div class="info-item"><label>المدير المباشر</label><div class="info-value">${esc(worker.directManager || 'غير محدد')}</div></div>
+            </div>
+          </div>
+
+          <div class="profile-section">
+            <h2><i class="ph ph-buildings"></i> معلومات العمل</h2>
+            <div class="info-grid">
+              <div class="info-item"><label>موقع العمل الحالي</label><div class="info-value">${esc(worker.currentWorkLocation || 'غير محدد')}</div></div>
+              <div class="info-item"><label>حالة العمل</label><div class="info-value">${({active:'على رأس العمل',on_leave:'إجازة',resigned:'مستقيل',terminated:'منتهي'})[worker.workStatus] || 'غير محدد'}</div></div>
+              <div class="info-item"><label>جدول العمل</label><div class="info-value">${esc(worker.workSchedule || 'غير محدد')}</div></div>
+              <div class="info-item" style="grid-column: 1 / -1;"><label>المسؤوليات الوظيفية</label><div class="info-value">${esc(worker.responsibilities || 'غير محدد')}</div></div>
+            </div>
+          </div>
+
+          <div class="profile-section">
+            <h2><i class="ph ph-calendar"></i> السجل الزمني والوظيفي</h2>
+            <div class="info-grid">
+              <div class="info-item"><label>تاريخ التعيين</label><div class="info-value">${fmtDate(worker.hireDate)}</div></div>
+              <div class="info-item"><label>تاريخ بداية العقد</label><div class="info-value">${fmtDate(worker.contractStartDate)}</div></div>
+              <div class="info-item"><label>تاريخ نهاية العقد</label><div class="info-value">${fmtDate(worker.contractEndDate)}</div></div>
+              <div class="info-item"><label>تاريخ آخر ترقية</label><div class="info-value">${fmtDate(worker.lastPromotionDate)}</div></div>
+              <div class="info-item"><label>تاريخ آخر تقييم</label><div class="info-value">${fmtDate(worker.lastEvaluationDate)}</div></div>
+            </div>
+          </div>
+
+          <div class="save-bar">
+            <button type="submit" style="background: var(--primary); color: white; padding: 12px 32px; border-radius: 8px; font-weight: bold; font-size: 15px;">
+              <i class="ph ph-check"></i> حفظ التعديلات الشخصية
+            </button>
+          </div>
+        </form>
+      `;
     }
 
-    window.saveProfile = async function(e) {
-        e.preventDefault();
-        const newName = document.getElementById('profileName').value.trim();
-        const newPhone = document.getElementById('profilePhone').value.trim();
+    window.savePersonal = async function (e) {
+      e.preventDefault();
+      const newName = document.getElementById('profileName').value.trim();
+      const newPhone = document.getElementById('profilePhone').value.trim();
+      if (!newName) return showToast('الاسم مطلوب.', true);
 
-        if (!newName) return alert('الاسم مطلوب.');
+      try {
+        await Saves.updateWorker(CURRENT_WORKER_ID, {
+          name: newName,
+          phone: newPhone,
+          profileUpdatedAt: new Date()
+        });
+        await Saves.addTimelineEvent(CURRENT_WORKER_ID, {
+          eventType: 'profile_updated',
+          title: 'تحديث البيانات الشخصية',
+          description: 'قام المهندس بتحديث اسمه أو رقم هاتفه',
+          performedBy: auth.currentUser.email
+        });
+        try { await updateDoc(doc(db, 'users', CURRENT_UID), { name: newName }); } catch {}
 
+        showToast('تم حفظ بياناتك بنجاح!');
         if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+        setTimeout(() => loadProfile(), 600);
+      } catch (err) {
+        showToast('حدث خطأ أثناء الحفظ: ' + err.message, true);
+      }
+    };
 
-        try {
-            await Saves.updateWorker(currentWorkerId, { name: newName, phone: newPhone });
-            await updateDoc(doc(db, 'users', currentUid), { name: newName });
-            alert('تم حفظ بياناتك بنجاح!');
-            loadProfile();
-        } catch (err) {
-            alert('حدث خطأ أثناء الحفظ: ' + err.message);
-        }
+    window.uploadWorkerPhoto = async function(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      try {
+        showToast('جاري رفع الصورة...');
+        const storageRef = ref(storage, `workers/${CURRENT_WORKER_ID}/profile.jpg`);
+        await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(storageRef);
+        
+        await Saves.updateWorker(CURRENT_WORKER_ID, { photoURL: downloadURL, profileUpdatedAt: new Date() });
+        
+        await Saves.addTimelineEvent(CURRENT_WORKER_ID, {
+          eventType: 'profile_updated',
+          title: 'تحديث الصورة الشخصية',
+          description: 'قام المهندس بتحديث صورته الشخصية',
+          performedBy: auth.currentUser.email
+        });
+
+        showToast('تم تحديث الصورة بنجاح!');
+        setTimeout(() => loadProfile(), 1000);
+      } catch (e) {
+        console.error(e);
+        showToast('فشل رفع الصورة: ' + e.message, true);
+      }
     };
   </script>
 </body>

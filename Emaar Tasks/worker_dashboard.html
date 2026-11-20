@@ -6,24 +6,53 @@
   <title>لوحة المهندس - إعمار</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
+  <style>
+    .task-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      border: 1px solid var(--border);
+      border-right: 6px solid var(--text-muted);
+    }
+    .task-card.in-progress { border-right-color: var(--primary); }
+    .task-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+    .task-title { font-size: 20px; font-weight: 700; color: var(--primary); margin: 0; }
+    .badge { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .badge.pending { background: #e2e8f0; color: #475569; }
+    .badge.in-progress { background: #dbeafe; color: #1e40af; }
+    .badge.review { background: #ede9fe; color: #6d28d9; }
+    .task-details { display: flex; gap: 15px; flex-wrap: wrap; font-size: 14px; color: var(--text-muted); margin-bottom: 15px; background: var(--bg); padding: 10px; border-radius: 8px; }
+    .map-link { display: inline-flex; align-items: center; gap: 5px; background: #e0f2fe; color: #0284c7; padding: 8px 15px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: bold; margin-bottom: 15px; }
+    .task-actions { border-top: 1px solid var(--border); padding-top: 15px; display: flex; gap: 10px; }
+    .btn-action { flex: 1; justify-content: center; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
+    .btn-start { background: var(--primary); }
+    .btn-finish { background: var(--success); }
+    .not-linked-box { text-align: center; padding: 50px 30px; background: var(--surface); border-radius: 12px; border: 2px dashed var(--danger); }
+    .not-linked-box i { font-size: 60px; color: var(--danger); margin-bottom: 20px; }
+    .not-linked-box h2 { color: var(--danger); margin-bottom: 10px; }
+    .not-linked-box p { color: var(--text-muted); margin-bottom: 20px; line-height: 1.7; }
+  </style>
 </head>
 <body class="app-body" id="bodyRoot">
 
   <div class="sidebar">
     <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار الخليج</div>
-    <a href="worker_dashboard.html" class="active"><i class="ph ph-check-square-offset"></i> مهامي</a>
+    <a href="worker_dashboard.html"><i class="ph ph-check-square-offset"></i> مهامي</a>
     <a href="worker_board.html"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
+    <a href="worker_chat.html" class="active"><i class="ph ph-chats"></i> محادثاتي</a>
     <a href="worker_profile.html"><i class="ph ph-user"></i> ملفي الشخصي</a>
     <a href="worker_settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
     <a href="#" onclick="handleLogout(event)" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
   </div>
 
   <div class="main-content">
-    <h1 id="greeting">مرحباً بك</h1>
-    <p class="subtitle">مهامك الهندسية المسندة.</p>
-
-    <div id="workerTasksContainer" class="grid-2">
-      <p style="text-align: center; color: var(--text-muted); width: 100%;">جاري تحميل المهام...</p>
+    <h1 id="workerGreeting" style="color: var(--primary); margin-bottom: 8px;">مرحباً...</h1>
+    <p style="color: var(--text-muted); margin-bottom: 30px;">مهامك الهندسية المسندة.</p>
+    
+    <div id="workerTasksContainer">
+        <p>جاري تحميل المهام...</p>
     </div>
   </div>
 
@@ -33,86 +62,160 @@
   <script type="module">
     import { db, auth } from './firebase-config.js';
     import Saves from './saves.js';
-    import { doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { doc, getDoc, setDoc, query, collection, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    let currentWorkerId = null;
 
     window.handleLogout = async function(e) {
       e.preventDefault();
       await signOut(auth);
-      localStorage.clear();
       window.location.href = 'index.html';
     };
 
-    // --- THE BULLETPROOF FIX ---
-    async function forceLoadDashboard() {
-        try {
-            // Find the worker by name
-            const workers = await Saves.getWorkers();
-            let myWorker = workers.find(w => w.name.includes("حازم سلامة"));
-            
-            const MY_WORKER_ID = myWorker ? myWorker.id : "1K0uJJzRbpKjBJtDzWQm";
-            const MY_NAME = myWorker ? myWorker.name : "حازم سلامة";
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = 'index.html';
+        return;
+      }
 
-            document.getElementById('greeting').textContent = `مرحباً، ${MY_NAME}`;
-            const container = document.getElementById('workerTasksContainer');
-            
-            const allTasks = await Saves.getTasks();
-            
-            const myTasks = allTasks.filter(t => {
-                let isAssigned = false;
-                if (t.workerIds && Array.isArray(t.workerIds)) isAssigned = t.workerIds.includes(MY_WORKER_ID);
-                if (t.workerId === MY_WORKER_ID) isAssigned = true;
-                
-                return isAssigned && (t.status === 'pending' || t.status === 'in_progress');
-            });
-            
-            if (myTasks.length === 0) {
-                container.innerHTML = '<p style="text-align:center; padding: 40px; color: var(--text-muted); width: 100%;">لا توجد مهام قيد التنفيذ حالياً.</p>';
-                return;
-            }
+      try {
+        // 1. Check if their REAL UID exists in the database
+        const docRef = doc(db, "users", user.uid);
+        let docSnap = await getDoc(docRef);
+        let userData = docSnap.exists() ? docSnap.data() : null;
 
-            container.innerHTML = myTasks.map(t => `
-                <div class="card" style="border-right: 4px solid var(--primary);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h3 style="color: var(--primary);">${t.title}</h3>
-                        <span class="badge ${t.status === 'pending' ? 'pending' : 'in-progress'}">
-                            ${t.status === 'pending' ? 'قيد الانتظار' : 'قيد التنفيذ'}
-                        </span>
-                    </div>
-                    ${t.description ? `<p style="font-size: 14px; color: var(--text-muted); margin-bottom: 15px;">${t.description}</p>` : ''}
-                    
-                    <div style="display: flex; gap: 15px; font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
-                        ${t.location ? `<span><i class="ph ph-map-pin"></i> ${t.location}</span>` : ''}
-                        ${t.dueDate ? `<span><i class="ph ph-calendar"></i> ${t.dueDate}</span>` : ''}
-                    </div>
-
-                    <div style="border-top: 1px solid var(--border); padding-top: 15px; display: flex; gap: 10px;">
-                        ${t.status === 'pending' ? `<button onclick="startTask('${t.id}')" style="background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;"><i class="ph ph-play"></i> بدء العمل</button>` : ''}
-                        ${t.status === 'in_progress' ? `<button onclick="finishTask('${t.id}')" style="background: var(--success); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;"><i class="ph ph-check"></i> تم الإنجاز وإرسال للمراجعة</button>` : ''}
-                    </div>
-                </div>
-            `).join('');
-
-        } catch (error) {
-            document.getElementById('workerTasksContainer').innerHTML = `<p style="color: red; width:100%;">خطأ: ${error.message}</p>`;
+        // 2. If it doesn't exist, check if an Admin created a placeholder profile by email
+        if (!userData) {
+           const q = query(collection(db, "users"), where("email", "==", user.email));
+           const querySnapshot = await getDocs(q);
+           
+           if (!querySnapshot.empty) {
+               // Found the placeholder! We will link it to their real UID now.
+               const placeholderDoc = querySnapshot.docs[0];
+               userData = placeholderDoc.data();
+               
+               // Create the real document using their Auth UID
+               await setDoc(docRef, {
+                   ...userData,
+                   uid: user.uid
+               });
+               
+               // Optional: Delete the placeholder to keep database clean
+               // await deleteDoc(doc(db, "users", placeholderDoc.id)); 
+           }
         }
+
+        if (!userData || !userData.workerId) {
+          showNotLinked("حسابك موجود، لكنه غير مرتبط بملف مهندس في النظام. يرجى التواصل مع المدير لربط حسابك.");
+          return;
+        }
+
+        currentWorkerId = userData.workerId;
+
+        // Fetch the worker's name for the greeting
+        const workers = await Saves.getWorkers();
+        const worker = workers.find(w => w.id === currentWorkerId);
+        const workerName = worker ? worker.name : (userData.name || user.email);
+
+        document.getElementById('workerGreeting').textContent = `مرحباً، ${workerName}`;
+
+        await loadWorkerTasks();
+
+      } catch (err) {
+        console.error("Worker dashboard error:", err);
+        showNotLinked("حدث خطأ أثناء تحميل بياناتك: " + err.message);
+      }
+    });
+
+    function showNotLinked(message) {
+      document.getElementById('workerGreeting').textContent = "مرحباً";
+      document.getElementById('workerTasksContainer').innerHTML = `
+        <div class="not-linked-box">
+          <i class="ph ph-user-circle-minus"></i>
+          <h2>لم يتم ربط حسابك بملف مهندس</h2>
+          <p>${message}</p>
+          <p style="font-size: 13px; color: var(--text-muted);">
+            اطلب من المدير فتح صفحة <strong>الفريق والإعدادات → الملف الشخصي للمهندس</strong> واستخدام أداة "ربط الحساب" لإدخال بريدك الإلكتروني:<br>
+            <strong style="color: var(--primary);">${auth.currentUser ? auth.currentUser.email : ''}</strong>
+          </p>
+          <a href="#" onclick="handleLogout(event)" style="display:inline-block; background: var(--danger); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 10px;">تسجيل الخروج</a>
+        </div>
+      `;
+    }
+
+    async function loadWorkerTasks() {
+      const tasks = await Saves.getTasks();
+      const container = document.getElementById('workerTasksContainer');
+
+      const myTasks = tasks.filter(t => {
+        let isAssigned = false;
+        if (t.workerIds && Array.isArray(t.workerIds)) isAssigned = t.workerIds.includes(currentWorkerId);
+        if (t.workerId === currentWorkerId) isAssigned = true;
+        return isAssigned && (t.status === 'pending' || t.status === 'in_progress' || t.status === 'review');
+      });
+
+      if (myTasks.length === 0) {
+        container.innerHTML = `
+          <div class="task-card" style="text-align:center; padding: 40px; border-right-color: var(--success);">
+            <h2 style="color: var(--success);"><i class="ph ph-check-circle"></i> لا توجد مهام حالياً</h2>
+            <p>أنت منجز لكل شيء! 🎉</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = myTasks.map(t => {
+        const isPending = t.status === 'pending';
+        const isReview = t.status === 'review';
+
+        let badgeText = 'قيد الانتظار';
+        let badgeClass = 'pending';
+        if (t.status === 'in_progress') { badgeText = 'قيد التنفيذ'; badgeClass = 'in-progress'; }
+        if (t.status === 'review') { badgeText = 'بانتظار المراجعة'; badgeClass = 'review'; }
+
+        let actionBtn = '';
+        if (isPending) {
+          actionBtn = `<button class="btn-action btn-start" onclick="startTask('${t.id}')"><i class="ph ph-play"></i> بدء العمل</button>`;
+        } else if (t.status === 'in_progress') {
+          actionBtn = `<button class="btn-action btn-finish" onclick="finishTask('${t.id}')"><i class="ph ph-check"></i> إرسال للمراجعة</button>`;
+        } else if (isReview) {
+          actionBtn = `<button class="btn-action" style="background: var(--text-muted); cursor: not-allowed;" disabled><i class="ph ph-hourglass"></i> بانتظار مراجعة المدير</button>`;
+        }
+
+        return `
+          <div class="task-card ${isPending ? '' : 'in-progress'}">
+            <div class="task-header">
+              <h3 class="task-title">${t.title}</h3>
+              <span class="badge ${badgeClass}">${badgeText}</span>
+            </div>
+            ${t.description ? `<p style="font-size:14px; margin-bottom:12px;">${t.description}</p>` : ''}
+            ${t.image ? `<img src="${t.image}" style="width:100%; max-height:200px; object-fit:cover; border-radius:8px; margin-bottom:12px;">` : ''}
+            <div class="task-details">
+              ${t.location ? `<span><i class="ph ph-map-pin"></i> ${t.location}</span>` : ''}
+              ${t.dueDate ? `<span><i class="ph ph-calendar"></i> ${t.dueDate}</span>` : ''}
+            </div>
+            ${t.mapLink ? `<a href="${t.mapLink}" target="_blank" class="map-link"><i class="ph ph-map-trifold"></i> فتح الخريطة</a>` : ''}
+            <div class="task-actions">
+              ${actionBtn}
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     window.startTask = async function(taskId) {
-        if (typeof Sounds !== 'undefined') Sounds.playSuccess();
-        await Saves.updateTask(taskId, { status: 'in_progress' });
-        forceLoadDashboard();
+      if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+      await Saves.updateTask(taskId, { status: 'in_progress' });
+      await loadWorkerTasks();
     };
 
     window.finishTask = async function(taskId) {
-        if(confirm('هل أنت متأكد من إنجاز هذه المهمة؟ سيتم إرسالها للمراجع.')) {
-            if (typeof Sounds !== 'undefined') Sounds.playSuccess();
-            await Saves.updateTask(taskId, { status: 'review' });
-            forceLoadDashboard();
-        }
+      if (confirm('إرسال المهمة للمراجعة؟')) {
+        if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+        await Saves.updateTask(taskId, { status: 'review' });
+        await loadWorkerTasks();
+      }
     };
-
-    forceLoadDashboard();
   </script>
 </body>
 </html>

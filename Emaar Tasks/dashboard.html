@@ -9,13 +9,65 @@
   <style>
     .dashboard-section { margin-bottom: 40px; }
     .section-title { font-size: 20px; color: var(--primary); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+    
+    /* Modal Styles */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
     .modal-content { background: var(--surface); padding: 24px; border-radius: 12px; width: 100%; max-width: 550px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-    .kanban-task, .task-item { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-    .kanban-task:hover, .task-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: var(--primary) !important; }
-    .order-btn { background: #f1f5f9; border: 1px solid #cbd5e1; color: #0f4c81; border-radius: 4px; cursor: pointer; padding: 2px 5px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-size: 12px; }
-    .order-btn:hover:not(:disabled) { background: #0f4c81; color: white; }
-    .order-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .modal-worker-chip { background: var(--primary); color: white; padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; }
+    .modal-arrow { color: var(--primary); font-size: 18px; font-weight: bold; margin: 0 4px; }
+
+    /* Kanban Card */
+    .kanban-task {
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .kanban-task:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.08); border-color: var(--primary); }
+    .kanban-task.dragging { opacity: 0.3; transform: scale(0.98); cursor: grabbing; }
+
+    /* Dropzone */
+    .kanban-dropzone {
+      min-height: 150px;
+      border: 2px dashed transparent;
+      border-radius: 8px;
+      padding: 8px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: background 0.2s;
+    }
+    .kanban-dropzone.drag-over { background: rgba(15, 76, 129, 0.04); border-color: rgba(15, 76, 129, 0.2); }
+    .drop-placeholder { height: 80px; border: 2px dashed var(--primary); background: rgba(15, 76, 129, 0.1); border-radius: 10px; pointer-events: none; }
+
+    /* Card Header */
+    .task-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .task-card-title { font-weight: 700; font-size: 15px; color: var(--text-main); line-height: 1.4; flex: 1; word-break: break-word; }
+    .task-card-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .status-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 2px rgba(0,0,0,0.05); }
+
+    /* Card Meta Info */
+    .task-card-meta { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--text-muted); border-top: 1px dashed var(--border); padding-top: 10px; }
+    .meta-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .meta-row i { font-size: 16px; color: var(--primary); }
+    .worker-chain-text { font-weight: 600; color: var(--text-main); direction: rtl; }
+    .worker-chain-text span.arrow { color: var(--text-muted); margin: 0 6px; font-size: 14px; font-weight: bold; }
+    .urgent-badge { color: #dc2626; background: #fee2e2; padding: 4px 8px; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; width: fit-content; font-size: 12px; }
+
+    /* Up/Down Arrows */
+    .order-controls { display: flex; flex-direction: column; gap: 2px; }
+    .order-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; transition: color 0.2s; font-size: 14px; }
+    .order-btn:hover:not(:disabled) { color: var(--primary); }
+    .order-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+    
+    .edit-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; padding: 0 4px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .edit-btn:hover { color: var(--primary); transform: scale(1.1); }
   </style>
 </head>
 <body class="app-body" id="bodyRoot">
@@ -29,15 +81,20 @@
       </div>
       <div style="margin-bottom: 20px;">
         <h4 style="color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">التفاصيل (Description)</h4>
-        <p id="viewTaskDesc" style="background: var(--bg); padding: 15px; border-radius: 8px; line-height: 1.6;"></p>
+        <p id="viewTaskDesc" style="background: var(--bg); padding: 15px; border-radius: 8px; line-height: 1.6; font-size: 14px;"></p>
       </div>
       <div style="margin-bottom: 20px;">
-        <h4 style="color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">تسلسل العمال (Assigned Workers)</h4>
-        <div id="viewTaskWorkers" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: bold; color: var(--primary);"></div>
+        <h4 style="color: var(--text-muted); margin-bottom: 10px; font-size: 13px;">تسلسل العمال (Assigned Workers)</h4>
+        <div id="viewTaskWorkers" style="display: flex; align-items: center; flex-direction: row-reverse; justify-content: flex-end; gap: 5px; flex-wrap: wrap;"></div>
       </div>
       <div class="grid-2">
-        <div><h4 style="color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">الموقع (Location)</h4><p id="viewTaskLocation" style="margin: 0;"><i class="ph ph-map-pin"></i> -</p></div>
-        <div><h4 style="color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">تاريخ التسليم (Due Date)</h4><p id="viewTaskDate" style="margin: 0;"><i class="ph ph-calendar"></i> -</p></div>
+        <div><h4 style="color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">الموقع (Location)</h4><p id="viewTaskLocation" style="margin: 0; font-size: 14px;"><i class="ph ph-map-pin"></i> -</p></div>
+        <div><h4 style="color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">تاريخ التسليم (Due Date)</h4><p id="viewTaskDate" style="margin: 0; font-size: 14px;"><i class="ph ph-calendar"></i> -</p></div>
+      </div>
+      <div id="viewTaskMapContainer" style="margin-top: 15px; display: none;">
+        <a id="viewTaskMapLink" href="#" target="_blank" style="display: inline-flex; align-items: center; gap: 5px; background: #e0f2fe; color: #0284c7; padding: 8px 15px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: bold;">
+            <i class="ph ph-map-trifold"></i> فتح الموقع على الخريطة
+        </a>
       </div>
       <button onclick="closeTaskDetailsModal()" style="width: 100%; justify-content: center; margin-top: 30px; background: var(--text-muted);"><i class="ph ph-x"></i> إغلاق</button>
     </div>
@@ -62,7 +119,7 @@
           <select id="editWorkerDropdown" style="flex: 1;"></select>
           <button type="button" onclick="addWorkerToEditChain()" style="background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer;"><i class="ph ph-plus"></i> إضافة</button>
         </div>
-        <div id="editWorkersChainList" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; min-height: 40px;"></div>
+        <div id="editWorkersChainList" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; min-height: 40px; flex-direction: row-reverse; justify-content: flex-end;"></div>
         <button type="button" onclick="clearEditWorkersChain()" style="background: transparent; color: var(--danger); border: none; font-size: 12px; margin-top: 10px; cursor: pointer;"><i class="ph ph-trash"></i> مسح القائمة</button>
       </div>
 
@@ -84,14 +141,16 @@
   </div>
 
   <div class="sidebar">
-    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'">إعمار الخليج</div>
-    <a href="dashboard.html" class="active"><i class="ph ph-squares-four"></i> لوحة القيادة</a>
+    <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار الخليج</div>
+    <a href="dashboard.html"><i class="ph ph-squares-four"></i> لوحة القيادة</a>
     <a href="projects.html"><i class="ph ph-folder-open"></i> مجلد المشاريع</a>
     <a href="fill_info.html"><i class="ph ph-users"></i> الفريق والإعدادات</a>
-    <a href="tasks.html"><i class="ph ph-list-dashes"></i> إنشاء مهمة</a>
-    <a href="report.html"><i class="ph ph-presentation"></i> تقارير المشاريع</a>
+    <a href="board.html"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
+    <a href="tasks.html"><i class="ph ph-list-dashes"></i> قائمة المهام</a>
+    <a href="report.html"><i class="ph ph-robot"></i> تقرير المشاريع</a>
+	<a href="chat.html"><i class="ph ph-chats"></i> المحادثات</a>
     <a href="settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات</a>
-    <a href="#" onclick="handleLogout(event)" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
+    <a href="#" onclick="handleLogout(event)" style="color: #ef4444;"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
   </div>
 
   <div class="main-content">
@@ -114,9 +173,9 @@
           </div>
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
-          <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444;"></div> عاجل</div>
+          <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #dc2626;"></div> قيد الانتظار</div>
           <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6;"></div> قيد التنفيذ</div>
-          <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #cbd5e1;"></div> لم يبدأ</div>
+          <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #eab308;"></div> بانتظار المراجعة</div>
           <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #10b981;"></div> تم الانتهاء</div>
         </div>
       </div>
@@ -126,20 +185,20 @@
       <h2 class="section-title"><i class="ph ph-kanban"></i> لوحة المهام (Board)</h2>
       <div class="kanban-board">
         <div class="kanban-column">
-          <div class="kanban-column-header"><span><i class="ph ph-hourglass"></i> قيد الانتظار</span><span id="count-pending">0</span></div>
-          <div id="col-pending" class="kanban-dropzone" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+          <div class="kanban-column-header"><span style="color:#dc2626;"><i class="ph ph-hourglass"></i> قيد الانتظار</span><span id="count-pending" style="background:#fee2e2; color:#dc2626; padding:2px 8px; border-radius:10px;">0</span></div>
+          <div id="col-pending" class="kanban-dropzone" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 'pending')"></div>
         </div>
         <div class="kanban-column">
-          <div class="kanban-column-header"><span><i class="ph ph-spinner"></i> قيد التنفيذ</span><span id="count-in_progress">0</span></div>
-          <div id="col-in_progress" class="kanban-dropzone" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+          <div class="kanban-column-header"><span style="color:#2563eb;"><i class="ph ph-spinner"></i> قيد التنفيذ</span><span id="count-in_progress" style="background:#dbeafe; color:#2563eb; padding:2px 8px; border-radius:10px;">0</span></div>
+          <div id="col-in_progress" class="kanban-dropzone" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 'in_progress')"></div>
         </div>
         <div class="kanban-column">
-          <div class="kanban-column-header"><span><i class="ph ph-eye"></i> بانتظار المراجعة</span><span id="count-review">0</span></div>
-          <div id="col-review" class="kanban-dropzone" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+          <div class="kanban-column-header"><span style="color:#ca8a04;"><i class="ph ph-eye"></i> بانتظار المراجعة</span><span id="count-review" style="background:#fef08a; color:#ca8a04; padding:2px 8px; border-radius:10px;">0</span></div>
+          <div id="col-review" class="kanban-dropzone" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 'review')"></div>
         </div>
         <div class="kanban-column">
-          <div class="kanban-column-header"><span><i class="ph ph-check-circle"></i> تم الانتهاء</span><span id="count-done">0</span></div>
-          <div id="col-done" class="kanban-dropzone" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+          <div class="kanban-column-header"><span style="color:#059669;"><i class="ph ph-check-circle"></i> تم الانتهاء</span><span id="count-done" style="background:#d1fae5; color:#059669; padding:2px 8px; border-radius:10px;">0</span></div>
+          <div id="col-done" class="kanban-dropzone" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 'done')"></div>
         </div>
       </div>
     </div>
@@ -170,6 +229,8 @@
     let allTasks = [];
     let allWorkers = [];
     let editingWorkerIds = [];
+    let draggedTaskId = null;
+    let placeholder = null;
 
     window.handleLogout = async function(e) {
       e.preventDefault();
@@ -183,8 +244,7 @@
         return;
       }
 
-      // --- THE ULTIMATE SECURITY CHECK ---
-      // If the logged-in email is NOT in the admin list, kick them to the worker dashboard immediately!
+      // Security Check
       if (!ADMIN_EMAILS.includes(user.email)) {
           window.location.href = 'worker_dashboard.html';
           return;
@@ -201,7 +261,7 @@
       allWorkers = await Saves.getWorkers();
       allTasks = await Saves.getTasks();
       
-      document.getElementById('editWorkerDropdown').innerHTML = allWorkers.map(w => `<option value="${w.id}">${w.name} (${w.role})</option>`).join('');
+      document.getElementById('editWorkerDropdown').innerHTML = allWorkers.map(w => `<option value="${w.id}">${w.name} (${w.role || ''})</option>`).join('');
 
       const projectsSnap = await getDocs(collection(db, 'projects'));
       const editProjectSelect = document.getElementById('editTaskProject');
@@ -215,9 +275,6 @@
       renderAdminDashboard();
     });
 
-    // ... (The rest of the renderAdminDashboard, renderKanbanBoard, etc. logic remains exactly the same as your previous file) ...
-    // I will include it below so you can copy the full file safely.
-    
     function renderAdminDashboard() {
       const doneTasks = allTasks.filter(t => t.status === 'done').length;
       document.getElementById('statWorkers').textContent = allWorkers.length;
@@ -231,9 +288,14 @@
     }
 
     function renderKanbanBoard() {
-      const columns = { 'pending': document.getElementById('col-pending'), 'in_progress': document.getElementById('col-in_progress'), 'review': document.getElementById('col-review'), 'done': document.getElementById('col-done') };
+      const columns = { 
+        'pending': document.getElementById('col-pending'), 
+        'in_progress': document.getElementById('col-in_progress'), 
+        'review': document.getElementById('col-review'), 
+        'done': document.getElementById('col-done') 
+      };
       Object.values(columns).forEach(col => col.innerHTML = '');
-      let cRed=0, cBlue=0, cWhite=0, cGreen=0;
+      let cRed=0, cBlue=0, cYellow=0, cGreen=0;
 
       const groupedTasks = {
         'pending': allTasks.filter(t => t.status === 'pending'),
@@ -243,102 +305,164 @@
       };
 
       Object.keys(groupedTasks).forEach(status => {
-          groupedTasks[status].sort((a, b) => {
-              const orderA = a.boardOrder !== undefined ? a.boardOrder : 9999;
-              const orderB = b.boardOrder !== undefined ? b.boardOrder : 9999;
-              return orderA - orderB;
-          });
+          groupedTasks[status].sort((a, b) => (a.boardOrder ?? 9999) - (b.boardOrder ?? 9999));
       });
 
-      allTasks.forEach(task => {
-        let isUrgent = false; let timeBadge = '';
-        if (task.dueDate && task.status !== 'done') {
-          const diffDays = Math.ceil((new Date(task.dueDate) - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
-          if (diffDays <= 5 && diffDays >= 0) { isUrgent = true; timeBadge = `<span style="color: #ef4444; font-size: 11px;"><i class="ph ph-warning"></i> متبقي ${diffDays} أيام</span>`; }
-          else if (diffDays < 0) { isUrgent = true; timeBadge = `<span style="color: #ef4444; font-size: 11px;"><i class="ph ph-warning"></i> متأخرة</span>`; }
-        }
-        
-        if (task.status === 'done') cGreen++;
-        else if (isUrgent) cRed++;
-        else if (task.status === 'in_progress' || task.status === 'review') cBlue++;
-        else cWhite++;
-      });
+      cRed = groupedTasks['pending'].length;
+      cBlue = groupedTasks['in_progress'].length;
+      cYellow = groupedTasks['review'].length;
+      cGreen = groupedTasks['done'].length;
 
       Object.keys(groupedTasks).forEach(status => {
           const col = columns[status];
           const colTasks = groupedTasks[status];
 
           colTasks.forEach((task, index) => {
-            const assignedWorkers = (task.workerIds || []).map(id => { const w = allWorkers.find(worker => worker.id === id); return w ? w.name : ''; }).join(' ➔ ');
+            const workerNamesArray = (task.workerIds || []).map(id => { 
+                const w = allWorkers.find(worker => worker.id === id); 
+                return w ? w.name : 'غير معروف'; 
+            });
+            const assignedWorkers = workerNamesArray.length > 0 ? workerNamesArray.join('<span class="arrow">←</span>') : 'لا يوجد عمال';
             
             let isUrgent = false; let timeBadge = '';
             if (task.dueDate && task.status !== 'done') {
               const diffDays = Math.ceil((new Date(task.dueDate) - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
-              if (diffDays <= 5 && diffDays >= 0) { isUrgent = true; timeBadge = `<span style="color: #ef4444; font-size: 11px;"><i class="ph ph-warning"></i> متبقي ${diffDays} أيام</span>`; }
-              else if (diffDays < 0) { isUrgent = true; timeBadge = `<span style="color: #ef4444; font-size: 11px;"><i class="ph ph-warning"></i> متأخرة</span>`; }
+              if (diffDays <= 5 && diffDays >= 0) { 
+                  isUrgent = true; 
+                  timeBadge = `<div class="urgent-badge"><i class="ph ph-warning"></i> متبقي ${diffDays} أيام</div>`; 
+              } else if (diffDays < 0) { 
+                  isUrgent = true; 
+                  timeBadge = `<div class="urgent-badge"><i class="ph ph-warning"></i> متأخرة</div>`; 
+              }
             }
 
-            let circleColor = '#cbd5e1'; if (task.status === 'done') circleColor = '#10b981'; else if (isUrgent) circleColor = '#ef4444'; else if (task.status === 'in_progress' || task.status === 'review') circleColor = '#3b82f6'; 
+            let circleColor = '#dc2626'; 
+            if (status === 'in_progress') circleColor = '#3b82f6'; 
+            if (status === 'review') circleColor = '#eab308'; 
+            if (status === 'done') circleColor = '#10b981'; 
 
             const taskEl = document.createElement('div');
             taskEl.className = 'kanban-task'; 
             taskEl.draggable = true; 
             taskEl.id = `task-${task.id}`;
-            taskEl.ondragstart = (e) => dragStart(e, task.id); 
-            taskEl.ondragend = (e) => e.target.classList.remove('dragging');
-            taskEl.onclick = () => openTaskDetails(task.id);
+            
+            taskEl.addEventListener('dragstart', (e) => {
+                draggedTaskId = task.id;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', task.id);
+                taskEl.classList.add('dragging');
+                placeholder = document.createElement('div');
+                placeholder.className = 'drop-placeholder';
+            });
 
-            const editBtn = isAdmin ? `<button onclick="event.stopPropagation(); openEditModal('${task.id}')" style="background: transparent !important; border: none !important; color: var(--primary) !important; cursor: pointer; font-size: 16px;" title="تعديل"><i class="ph ph-pencil"></i></button>` : '';
+            taskEl.addEventListener('dragend', () => {
+                taskEl.classList.remove('dragging');
+                if (placeholder && placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
+                draggedTaskId = null;
+            });
 
+            taskEl.addEventListener('dragover', (e) => {
+                e.preventDefault(); 
+                e.stopPropagation();
+                if (!placeholder) return;
+                const rect = taskEl.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                if (e.clientY < midY) taskEl.parentNode.insertBefore(placeholder, taskEl);
+                else taskEl.parentNode.insertBefore(placeholder, taskEl.nextSibling);
+            });
+
+            taskEl.addEventListener('click', () => openTaskDetails(task.id));
+
+            const editBtn = isAdmin ? `<button class="edit-btn" onclick="event.stopPropagation(); openEditModal('${task.id}')" title="تعديل"><i class="ph ph-pencil"></i></button>` : '';
             const orderControls = isAdmin ? `
-              <div style="display: flex; flex-direction: column; gap: 2px; margin-left: 8px;">
+              <div class="order-controls">
                 <button class="order-btn" onclick="event.stopPropagation(); moveKanbanTask('${task.id}', '${status}', ${index}, -1)" ${index === 0 ? 'disabled' : ''}><i class="ph ph-caret-up"></i></button>
                 <button class="order-btn" onclick="event.stopPropagation(); moveKanbanTask('${task.id}', '${status}', ${index}, 1)" ${index === colTasks.length - 1 ? 'disabled' : ''}><i class="ph ph-caret-down"></i></button>
               </div>
             ` : '';
 
             taskEl.innerHTML = `
-              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div class="kanban-task-title" style="flex:1;">${task.title}</div>
-                <div style="display: flex; gap: 5px; align-items: center;">
-                  ${editBtn}
+              <div class="task-card-header">
+                <div class="task-card-title">${task.title}</div>
+                <div class="task-card-actions">
                   ${orderControls}
-                  <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${circleColor}; margin-right: 5px;"></div>
+                  ${editBtn}
+                  <div class="status-dot" style="background-color: ${circleColor};"></div>
                 </div>
               </div>
-              <div class="kanban-task-meta">
+              <div class="task-card-meta">
                 ${timeBadge}
-                <span><i class="ph ph-users"></i> ${assignedWorkers}</span>
+                <div class="meta-row">
+                  <i class="ph ph-users"></i>
+                  <span class="worker-chain-text">${assignedWorkers}</span>
+                </div>
               </div>`;
+              
             col.appendChild(taskEl);
           });
       });
 
-      document.getElementById('count-pending').textContent = cWhite + cRed;
+      document.getElementById('count-pending').textContent = cRed;
       document.getElementById('count-in_progress').textContent = cBlue;
-      document.getElementById('count-review').textContent = document.getElementById('col-review').children.length;
+      document.getElementById('count-review').textContent = cYellow;
       document.getElementById('count-done').textContent = cGreen;
 
       const total = allTasks.length; const circleElement = document.getElementById('statusCircle');
       if (total === 0) { circleElement.style.background = `conic-gradient(#e2e8f0 0% 100%)`; } 
       else {
-        const pR = (cRed/total)*100; const pB = (cBlue/total)*100; const pW = (cWhite/total)*100; const pG = (cGreen/total)*100;
+        const pR = (cRed/total)*100, pB = (cBlue/total)*100, pY = (cYellow/total)*100, pG = (cGreen/total)*100;
         let cp = 0; let gp = [];
-        if (pR > 0) { gp.push(`#ef4444 ${cp}% ${cp+pR}%`); cp+=pR; }
+        if (pR > 0) { gp.push(`#dc2626 ${cp}% ${cp+pR}%`); cp+=pR; }
         if (pB > 0) { gp.push(`#3b82f6 ${cp}% ${cp+pB}%`); cp+=pB; }
-        if (pW > 0) { gp.push(`#cbd5e1 ${cp}% ${cp+pW}%`); cp+=pW; }
+        if (pY > 0) { gp.push(`#eab308 ${cp}% ${cp+pY}%`); cp+=pY; }
         if (pG > 0) { gp.push(`#10b981 ${cp}% 100%`); }
         circleElement.style.background = `conic-gradient(${gp.join(', ')})`;
       }
     }
 
+    window.allowDrop = (ev) => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; };
+    window.dragEnter = (ev) => { ev.preventDefault(); if (ev.target.classList.contains('kanban-dropzone')) ev.target.classList.add('drag-over'); };
+    window.dragLeave = (ev) => { if (ev.target.classList.contains('kanban-dropzone')) ev.target.classList.remove('drag-over'); };
+
+    window.drop = async (ev, newStatus) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        
+        const dropzone = ev.currentTarget;
+        dropzone.classList.remove('drag-over');
+
+        if (!draggedTaskId || !placeholder) return;
+
+        let newOrderedIds = [];
+        Array.from(dropzone.children).forEach(child => {
+            if (child.classList.contains('kanban-task')) newOrderedIds.push(child.id.replace('task-', ''));
+            else if (child === placeholder) newOrderedIds.push(draggedTaskId);
+        });
+
+        if (!newOrderedIds.includes(draggedTaskId)) newOrderedIds.push(draggedTaskId);
+
+        if (placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
+        placeholder = null;
+        
+        const taskIdToDrop = draggedTaskId;
+        draggedTaskId = null;
+
+        if (typeof Sounds !== 'undefined') Sounds.playSuccess();
+
+        for (let i = 0; i < newOrderedIds.length; i++) {
+            const id = newOrderedIds[i];
+            const updates = { boardOrder: i };
+            if (id === taskIdToDrop) updates.status = newStatus;
+            await Saves.updateTask(id, updates);
+        }
+
+        allTasks = await Saves.getTasks();
+        renderAdminDashboard();
+    };
+
     window.moveKanbanTask = async function(taskId, status, currentIndex, direction) {
         let colTasks = allTasks.filter(t => t.status === status);
-        colTasks.sort((a, b) => {
-            const orderA = a.boardOrder !== undefined ? a.boardOrder : 9999;
-            const orderB = b.boardOrder !== undefined ? b.boardOrder : 9999;
-            return orderA - orderB;
-        });
+        colTasks.sort((a, b) => (a.boardOrder ?? 9999) - (b.boardOrder ?? 9999));
 
         const targetIndex = currentIndex + direction;
         if (targetIndex < 0 || targetIndex >= colTasks.length) return;
@@ -347,12 +471,10 @@
         colTasks[currentIndex] = colTasks[targetIndex];
         colTasks[targetIndex] = temp;
 
-        for (let i = 0; i < colTasks.length; i++) {
-            await Saves.updateTask(colTasks[i].id, { boardOrder: i });
-        }
+        for (let i = 0; i < colTasks.length; i++) await Saves.updateTask(colTasks[i].id, { boardOrder: i });
 
         allTasks = await Saves.getTasks();
-        renderKanbanBoard();
+        renderAdminDashboard();
         if (typeof Sounds !== 'undefined') Sounds.playClick();
     };
 
@@ -360,11 +482,7 @@
       const list = document.getElementById('dashboardTaskList');
       if (allTasks.length === 0) { list.innerHTML = '<p style="text-align:center; padding:20px;">لا توجد مهام.</p>'; return; }
 
-      allTasks.sort((a, b) => {
-          const orderA = a.dashOrder !== undefined ? a.dashOrder : (a.createdAt || 0);
-          const orderB = b.dashOrder !== undefined ? b.dashOrder : (b.createdAt || 0);
-          return orderA - orderB;
-      });
+      allTasks.sort((a, b) => (a.dashOrder ?? (a.createdAt || 0)) - (b.dashOrder ?? (b.createdAt || 0)));
 
       list.innerHTML = allTasks.map((t, index) => {
         let statusArabic = ""; let badgeClass = "";
@@ -383,15 +501,14 @@
         const editBtn = isAdmin ? `<button onclick="event.stopPropagation(); openEditModal('${t.id}')" style="background: transparent !important; border: none !important; color: var(--primary) !important; cursor: pointer; font-size: 18px; padding: 0 5px;" title="تعديل"><i class="ph ph-pencil"></i></button>` : '';
 
         return `
-          <div class="task-item" style="display: flex; justify-content: space-between; align-items: center; border-right: 4px solid var(--primary); padding: 12px; margin-bottom: 10px;" onclick="openTaskDetails('${t.id}')">
+          <div class="task-item" style="display: flex; justify-content: space-between; align-items: center; border-right: 4px solid var(--primary); padding: 12px; margin-bottom: 10px; background: var(--bg); border-radius: 8px;" onclick="openTaskDetails('${t.id}')">
             <div style="display: flex; align-items: center;">
                 ${orderControls}
                 <div>
                     <strong>${t.title}</strong>
-                    <p style="font-size: 12px; margin: 5px 0 0 0; color: var(--text-muted);">اضغط لرؤية التفاصيل</p>
                 </div>
             </div>
-            <div style="display: flex; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
                 ${editBtn}
                 <span class="badge ${badgeClass}">${statusArabic}</span>
             </div>
@@ -404,11 +521,7 @@
       const list = document.getElementById('dashboardWorkerList');
       if (allWorkers.length === 0) { list.innerHTML = '<p style="text-align:center; padding:20px;">لا يوجد عمال.</p>'; return; }
 
-      allWorkers.sort((a, b) => {
-          const orderA = a.order !== undefined ? a.order : 9999;
-          const orderB = b.order !== undefined ? b.order : 9999;
-          return orderA - orderB;
-      });
+      allWorkers.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
 
       list.innerHTML = allWorkers.map((w, index) => {
         const wTasks = allTasks.filter(t => t.workerIds && t.workerIds.includes(w.id)).length;
@@ -425,7 +538,7 @@
             <div style="display: flex; align-items: center;">
                 ${orderControls}
                 <div>
-                    <strong style="color: var(--primary);">${w.name}</strong> <span style="font-size: 12px; color: var(--text-muted);">(${w.role})</span>
+                    <strong style="color: var(--primary);">${w.name}</strong> <span style="font-size: 12px; color: var(--text-muted);">(${w.role || 'مهندس'})</span>
                 </div>
             </div>
             <button onclick="window.location.href='profile.html?id=${w.id}'" style="background: var(--bg); color: var(--text-main); border: 1px solid var(--border); padding: 5px 10px; font-size: 12px; cursor: pointer;"><i class="ph ph-user-circle"></i> ${wTasks} مهام</button>
@@ -442,9 +555,7 @@
       allTasks[index] = allTasks[targetIndex];
       allTasks[targetIndex] = temp;
 
-      for (let i = 0; i < allTasks.length; i++) {
-          await Saves.updateTask(allTasks[i].id, { dashOrder: i });
-      }
+      for (let i = 0; i < allTasks.length; i++) await Saves.updateTask(allTasks[i].id, { dashOrder: i });
 
       renderDashboardTaskList();
       if (typeof Sounds !== 'undefined') Sounds.playClick();
@@ -458,9 +569,7 @@
       allWorkers[index] = allWorkers[targetIndex];
       allWorkers[targetIndex] = temp;
 
-      for (let i = 0; i < allWorkers.length; i++) {
-          await Saves.updateWorker(allWorkers[i].id, { order: i });
-      }
+      for (let i = 0; i < allWorkers.length; i++) await Saves.updateWorker(allWorkers[i].id, { order: i });
 
       renderDashboardWorkerList();
       if (typeof Sounds !== 'undefined') Sounds.playClick();
@@ -469,43 +578,37 @@
     window.openTaskDetails = function(taskId) {
         const task = allTasks.find(t => t.id === taskId);
         if(!task) return;
+        
         const assignedWorkers = (task.workerIds || []).map(id => {
           const w = allWorkers.find(worker => worker.id === id);
-          return `<span style="background: var(--primary); color: white; padding: 4px 10px; border-radius: 15px; font-size: 12px;">${w ? w.name : 'غير معروف'}</span>`;
-        }).join('<i class="ph ph-arrow-left"></i>');
+          return `<span class="modal-worker-chip">${w ? w.name : 'غير معروف'}</span>`;
+        });
+        const workerChainHTML = assignedWorkers.join('<span class="modal-arrow"><i class="ph ph-arrow-left"></i></span>');
+        
         document.getElementById('viewTaskTitle').textContent = task.title;
         document.getElementById('viewTaskDesc').textContent = task.description || 'لا يوجد وصف.';
-        document.getElementById('viewTaskWorkers').innerHTML = assignedWorkers || 'لا يوجد عمال.';
+        document.getElementById('viewTaskWorkers').innerHTML = workerChainHTML || 'لا يوجد عمال.';
         document.getElementById('viewTaskLocation').innerHTML = task.location ? `<i class="ph ph-map-pin"></i> ${task.location}` : '<i class="ph ph-map-pin"></i> -';
         document.getElementById('viewTaskDate').innerHTML = task.dueDate ? `<i class="ph ph-calendar"></i> ${task.dueDate}` : '<i class="ph ph-calendar"></i> -';
+        
+        const mapContainer = document.getElementById('viewTaskMapContainer');
+        const mapLink = document.getElementById('viewTaskMapLink');
+        if (task.mapLink) {
+            mapLink.href = task.mapLink;
+            mapContainer.style.display = 'block';
+        } else {
+            mapContainer.style.display = 'none';
+        }
+
         const badgeEl = document.getElementById('viewTaskStatus');
         if (task.status === 'pending') { badgeEl.textContent = "قيد الانتظار"; badgeEl.className = "badge pending"; }
         if (task.status === 'in_progress') { badgeEl.textContent = "قيد التنفيذ"; badgeEl.className = "badge in-progress"; }
         if (task.status === 'review') { badgeEl.textContent = "بانتظار المراجعة"; badgeEl.className = "badge review"; }
         if (task.status === 'done') { badgeEl.textContent = "تم الانتهاء"; badgeEl.className = "badge done"; }
+        
         document.getElementById('taskDetailsModal').style.display = 'flex';
     };
     window.closeTaskDetailsModal = function() { document.getElementById('taskDetailsModal').style.display = 'none'; };
-
-    window.allowDrop = (ev) => ev.preventDefault();
-    window.dragEnter = (ev) => { ev.preventDefault(); if (ev.target.classList.contains('kanban-dropzone')) ev.target.classList.add('drag-over'); };
-    window.dragLeave = (ev) => { if (ev.target.classList.contains('kanban-dropzone')) ev.target.classList.remove('drag-over'); };
-    window.dragStart = (ev, taskId) => { ev.dataTransfer.setData("text/plain", taskId); ev.target.classList.add('dragging'); };
-    window.drop = async (ev) => {
-      ev.preventDefault();
-      document.querySelectorAll('.kanban-dropzone').forEach(z => z.classList.remove('drag-over'));
-      const taskId = ev.dataTransfer.getData("text/plain");
-      const targetCol = ev.target.closest('.kanban-column');
-      if (!targetCol) return;
-      const newStatus = targetCol.querySelector('.kanban-dropzone').id.replace('col-', '');
-      const task = allTasks.find(t => t.id === taskId);
-      if (task && task.status !== newStatus) {
-        if (typeof Sounds !== 'undefined') Sounds.playSuccess();
-        await Saves.updateTask(taskId, { status: newStatus });
-        task.status = newStatus;
-        renderAdminDashboard();
-      }
-    };
 
     window.openEditModal = function(taskId) {
       const task = allTasks.find(t => t.id === taskId);
@@ -525,6 +628,7 @@
       document.getElementById('editModal').style.display = 'flex';
     };
     window.closeEditModal = function() { document.getElementById('editModal').style.display = 'none'; };
+    
     window.addWorkerToEditChain = function() {
       const workerId = document.getElementById('editWorkerDropdown').value;
       if (!workerId) return;
@@ -533,15 +637,17 @@
       renderEditWorkersChain();
     };
     window.clearEditWorkersChain = function() { editingWorkerIds = []; renderEditWorkersChain(); };
+    
     function renderEditWorkersChain() {
       const container = document.getElementById('editWorkersChainList');
       if (editingWorkerIds.length === 0) { container.innerHTML = '<span style="color: var(--text-muted); font-size: 13px;">لم يتم اختيار عمال.</span>'; return; }
       container.innerHTML = editingWorkerIds.map((id, index) => {
         const worker = allWorkers.find(w => w.id === id);
         const isLast = index === editingWorkerIds.length - 1;
-        return `<span style="background: var(--primary); color: white; padding: 5px 12px; border-radius: 20px; font-size: 13px;">${worker ? worker.name : 'غير معروف'}</span>${!isLast ? '<i class="ph ph-arrow-left" style="color: var(--text-muted);"></i>' : ''}`;
+        return `<span class="modal-worker-chip">${worker ? worker.name : 'غير معروف'}</span>${!isLast ? '<span class="modal-arrow"><i class="ph ph-arrow-left"></i></span>' : ''}`;
       }).join('');
     }
+    
     window.saveEditTask = async function() {
       const taskId = document.getElementById('editTaskId').value;
       const title = document.getElementById('editTitle').value.trim();

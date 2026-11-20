@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. دالة للتحقق من المديرين
+    function isAdmin() {
+      return request.auth != null &&
+        request.auth.token.email in [
+          'hazemyt55@gmail.com',
+          'm.salama@emaar.gulf'
+        ];
+    }
+
+    // 2. دالة للتحقق من تسجيل الدخول
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // ==========================================
+    // قواعد مجموعة العمال (workers)
+    // ==========================================
+    match /workers/{workerId} {
+      // القراءة: مسموحة للمدير، أو للمهندس لملفه الشخصي فقط
+      allow read: if isAdmin() || (
+        isSignedIn() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.workerId == workerId
+      );
+
+      // التحديث: المدير يمكنه تعديل كل شيء.
+      // المهندس يمكنه تعديل الاسم، الهاتف، وتاريخ التحديث فقط.
+      allow update: if isAdmin() || (
+        isSignedIn() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.workerId == workerId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'profileUpdatedAt', 'lastLoginAt'])
+      );
+
+      // الإنشاء والحذف: للمدير فقط
+      allow create, delete: if isAdmin();
+
+      // السجل التاريخي للمهندس (timeline)
+      match /timeline/{eventId} {
+        allow read: if isAdmin() || (
+          isSignedIn() && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.workerId == workerId
+        );
+        // الإضافة: المدير يمكنه إضافة أي حدث، والمهندس يمكنه إضافة حدث تحديث الملف فقط
+        allow create: if isAdmin() || (
+          isSignedIn() && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.workerId == workerId &&
+          request.resource.data.eventType == 'profile_updated'
+        );
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // ==========================================
+    // قواعد مجموعات النظام الأخرى (كما هي تقريباً)
+    // ==========================================
+    
+    // مستخدمو النظام
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow delete: if isAdmin();
+    }
+
+    // المهام، المشاريع، والإعدادات
+    match /tasks/{id} { allow read, write: if isSignedIn(); }
+    match /projects/{id} { allow read, write: if isSignedIn(); }
+    
+    // أي مجموعات أخرى (احتياطي)
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

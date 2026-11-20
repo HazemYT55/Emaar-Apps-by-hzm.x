@@ -7,42 +7,11 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
   <style>
-    .arrow-btn {
-      background: var(--primary) !important;
-      color: white !important;
-      border: none !important;
-      border-radius: 6px;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-size: 16px;
-    }
-    .arrow-btn:hover:not(:disabled) {
-      background: var(--accent) !important;
-      color: black !important;
-      transform: scale(1.1);
-    }
-    .arrow-btn:disabled {
-      background: #cbd5e1 !important;
-      cursor: not-allowed;
-      opacity: 0.5;
-    }
-    .pen-btn {
-      background: transparent !important; 
-      border: none !important; 
-      color: var(--primary) !important; 
-      cursor: pointer; 
-      font-size: 20px; 
-      padding: 5px;
-      transition: transform 0.2s;
-    }
-    .pen-btn:hover {
-      transform: scale(1.2);
-    }
+    .arrow-btn { background: var(--primary) !important; color: white !important; border: none !important; border-radius: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 16px; }
+    .arrow-btn:hover:not(:disabled) { background: var(--accent) !important; color: black !important; transform: scale(1.1); }
+    .arrow-btn:disabled { background: #cbd5e1 !important; cursor: not-allowed; opacity: 0.5; }
+    .pen-btn { background: transparent !important; border: none !important; color: var(--primary) !important; cursor: pointer; font-size: 20px; padding: 5px; transition: transform 0.2s; }
+    .pen-btn:hover { transform: scale(1.2); }
   </style>
 </head>
 <body class="app-body" id="bodyRoot">
@@ -54,6 +23,7 @@
       <input type="hidden" id="editWorkerId">
       
       <div class="form-group"><label>اسم المهندس</label><input type="text" id="editWorkerName"></div>
+      <div class="form-group"><label>البريد الإلكتروني (للمحادثات)</label><input type="email" id="editWorkerEmail"></div>
       <div class="form-group"><label>المسمى الوظيفي</label><input type="text" id="editWorkerRole"></div>
       <div class="form-group"><label>رقم الهاتف</label><input type="text" id="editWorkerPhone"></div>
 
@@ -68,10 +38,12 @@
     <div class="logo"><img src="assets/logo.jpg" onerror="this.style.display='none'"> إعمار الخليج</div>
     <a href="dashboard.html"><i class="ph ph-squares-four"></i> لوحة القيادة</a>
     <a href="projects.html"><i class="ph ph-folder-open"></i> مجلد المشاريع</a>
-    <a href="fill_info.html" class="active"><i class="ph ph-users"></i> الفريق والإعدادات</a>
+    <a href="fill_info.html" ><i class="ph ph-users"></i> الفريق والإعدادات</a>
     <a href="board.html"><i class="ph ph-kanban"></i> لوحة المهام (Board)</a>
     <a href="tasks.html"><i class="ph ph-list-dashes"></i> قائمة المهام</a>
     <a href="report.html"><i class="ph ph-robot"></i> تقرير الذكاء الاصطناعي</a>
+	<a href="chat.html"><i class="ph ph-chats"></i> المحادثات</a>
+
     <a href="settings.html" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="ph ph-gear"></i> الإعدادات (Settings)</a>
     <a href="index.html" style="color: #ef4444;"><i class="ph ph-sign-out"></i> تسجيل الخروج</a>
   </div>
@@ -91,8 +63,11 @@
       
       <div style="background: var(--bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
         <h3 style="font-size: 16px; margin-bottom: 16px;"><i class="ph ph-user-plus"></i> إضافة مهندس جديد</h3>
-        <div class="grid-3">
+        <div class="grid-2">
           <div class="form-group"><label>اسم المهندس</label><input type="text" id="workerName" placeholder="مثال: أحمد"></div>
+          <div class="form-group"><label>البريد الإلكتروني (للمحادثات)</label><input type="email" id="workerEmail" placeholder="ahmed@emaargulf.com"></div>
+        </div>
+        <div class="grid-2">
           <div class="form-group"><label>المسمى الوظيفي</label><input type="text" id="workerRole" placeholder="مثال: مهندس موقع"></div>
           <div class="form-group"><label>رقم الهاتف</label><input type="text" id="workerPhone" placeholder="مثال: 0100..."></div>
         </div>
@@ -135,33 +110,19 @@
         return;
       }
 
-      currentWorkers.sort((a, b) => {
-          const orderA = a.order !== undefined ? a.order : 9999;
-          const orderB = b.order !== undefined ? b.order : 9999;
-          return orderA - orderB;
-      });
+      currentWorkers.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
 
       list.innerHTML = currentWorkers.map((w, index) => {
-        const editBtn = isAdmin ? `
-          <button onclick="openEditWorkerModal('${w.id}')" class="pen-btn" title="تعديل البيانات">
-            <i class="ph ph-pencil"></i>
-          </button>
-        ` : '';
-
+        const editBtn = isAdmin ? `<button onclick="openEditWorkerModal('${w.id}')" class="pen-btn" title="تعديل البيانات"><i class="ph ph-pencil"></i></button>` : '';
         const orderControls = isAdmin ? `
           <div class="order-controls" style="display: flex; flex-direction: column; gap: 6px; margin-left: 10px;">
-            <button class="arrow-btn" onclick="moveWorker(${index}, -1)" ${index === 0 ? 'disabled' : ''} title="تحريك لأعلى">
-              <i class="ph ph-caret-up"></i>
-            </button>
-            <button class="arrow-btn" onclick="moveWorker(${index}, 1)" ${index === currentWorkers.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">
-              <i class="ph ph-caret-down"></i>
-            </button>
+            <button class="arrow-btn" onclick="moveWorker(${index}, -1)" ${index === 0 ? 'disabled' : ''}><i class="ph ph-caret-up"></i></button>
+            <button class="arrow-btn" onclick="moveWorker(${index}, 1)" ${index === currentWorkers.length - 1 ? 'disabled' : ''}><i class="ph ph-caret-down"></i></button>
           </div>
         ` : '';
 
         return `
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--border);">
-            
             <div style="display: flex; align-items: center;">
               ${orderControls}
               <div style="margin-right: 15px;">
@@ -169,19 +130,16 @@
                 <span style="font-size: 13px; color: var(--text-muted); background: var(--bg); padding: 2px 8px; border-radius: 4px; margin-right: 8px;">${w.role || 'بدون مسمى'}</span>
                 <br>
                 <small style="color: var(--text-muted); font-size: 12px; display: inline-block; margin-top: 6px;">
-                  <i class="ph ph-phone"></i> ${w.phone || 'لا يوجد رقم'}
+                  <i class="ph ph-envelope"></i> ${w.email || 'لا يوجد بريد'} | <i class="ph ph-phone"></i> ${w.phone || 'لا يوجد رقم'}
                 </small>
               </div>
             </div>
-
             <div style="display: flex; gap: 8px; align-items: center;">
               ${editBtn}
               <button style="padding: 8px 12px; font-size: 12px; border-radius: 6px; background: var(--accent); color: black;" onclick="window.location.href='profile.html?id=${w.id}'">
                 <i class="ph ph-user-circle"></i> الملف
               </button>
-              <button class="danger" onclick="deleteWorker('${w.id}')" style="padding: 8px 12px; font-size: 12px; border-radius: 6px;">
-                <i class="ph ph-trash"></i>
-              </button>
+              <button class="danger" onclick="deleteWorker('${w.id}')" style="padding: 8px 12px; font-size: 12px; border-radius: 6px;"><i class="ph ph-trash"></i></button>
             </div>
           </div>
         `;
@@ -191,21 +149,18 @@
     window.moveWorker = async function(index, direction) {
       const targetIndex = index + direction;
       if (targetIndex < 0 || targetIndex >= currentWorkers.length) return;
-
       const temp = currentWorkers[index];
       currentWorkers[index] = currentWorkers[targetIndex];
       currentWorkers[targetIndex] = temp;
-
       for (let i = 0; i < currentWorkers.length; i++) {
           await Saves.updateWorker(currentWorkers[i].id, { order: i });
       }
-
       renderWorkers();
-      if (typeof Sounds !== 'undefined') Sounds.playClick();
     };
 
     window.addWorker = async function() {
       const name = document.getElementById('workerName').value.trim();
+      const email = document.getElementById('workerEmail').value.trim();
       const role = document.getElementById('workerRole').value.trim();
       const phone = document.getElementById('workerPhone').value.trim();
       
@@ -214,9 +169,10 @@
 
       const nextOrder = currentWorkers.length > 0 ? currentWorkers.length : 0;
 
-      await Saves.addWorker({ name, role, phone, createdAt: Date.now(), order: nextOrder });
+      await Saves.addWorker({ name, email, role, phone, createdAt: Date.now(), order: nextOrder });
       
       document.getElementById('workerName').value = '';
+      document.getElementById('workerEmail').value = '';
       document.getElementById('workerRole').value = '';
       document.getElementById('workerPhone').value = '';
       
@@ -224,7 +180,7 @@
     };
 
     window.deleteWorker = async function(id) {
-      if (confirm('هل أنت متأكد من حذف هذا المهندس؟ (سيتم مسحه من المهام أيضاً)')) {
+      if (confirm('هل أنت متأكد من حذف هذا المهندس؟')) {
         await Saves.removeWorker(id);
         renderWorkers();
       }
@@ -237,6 +193,7 @@
 
       document.getElementById('editWorkerId').value = w.id;
       document.getElementById('editWorkerName').value = w.name || '';
+      document.getElementById('editWorkerEmail').value = w.email || '';
       document.getElementById('editWorkerRole').value = w.role || '';
       document.getElementById('editWorkerPhone').value = w.phone || '';
 
@@ -250,12 +207,13 @@
     window.saveEditedWorker = async function() {
       const id = document.getElementById('editWorkerId').value;
       const name = document.getElementById('editWorkerName').value.trim();
+      const email = document.getElementById('editWorkerEmail').value.trim();
       const role = document.getElementById('editWorkerRole').value.trim();
       const phone = document.getElementById('editWorkerPhone').value.trim();
 
       if (!name) return alert('اسم المهندس مطلوب.');
 
-      await Saves.updateWorker(id, { name, role, phone });
+      await Saves.updateWorker(id, { name, email, role, phone });
       
       closeEditWorkerModal();
       renderWorkers();
